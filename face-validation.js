@@ -6,6 +6,7 @@
 
   let modelPromise = null;
   let validatedSrc = null;
+  let entitlementPromise = null;
 
   function toast(message) {
     if (typeof window.showToast === 'function') {
@@ -63,6 +64,39 @@
       throw error;
     });
     return modelPromise;
+  }
+
+  async function hasPaidAccess(force = false) {
+    if (!force && window.FaceRevealEntitled === true) return true;
+    if (entitlementPromise) return entitlementPromise;
+
+    entitlementPromise = fetch('/api/access-status', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        const entitled = Boolean(response.ok && data.entitled);
+        window.FaceRevealEntitled = entitled;
+        return entitled;
+      })
+      .catch(() => false)
+      .finally(() => { entitlementPromise = null; });
+
+    return entitlementPromise;
+  }
+
+  async function showPaidResultIfEntitled() {
+    const entitled = await hasPaidAccess();
+    if (!entitled) return false;
+
+    window.FaceRevealApp?.hydrateResult?.();
+    window.FaceRevealApp?.showScreen?.('result');
+    window.FaceRevealCelebrityMatches?.loadSet?.();
+    toast('Paid access active — no need to pay again ✓');
+    return true;
   }
 
   function distance(a, b) {
@@ -220,6 +254,7 @@
     if (!preview?.src || !consent?.checked) return;
 
     if (validatedSrc === preview.src && window.FaceRevealUserGeometry) {
+      if (await showPaidResultIfEntitled()) return;
       if (typeof window.runScan === 'function') window.runScan();
       return;
     }
@@ -239,6 +274,8 @@
 
       validatedSrc = preview.src;
       toast('Face measured ✓');
+
+      if (await showPaidResultIfEntitled()) return;
       if (typeof window.runScan === 'function') window.runScan();
       else throw new Error('Scan flow is unavailable.');
     } catch (error) {
@@ -262,6 +299,7 @@
 
   const warmModels = () => {
     loadModels().catch(() => {});
+    hasPaidAccess().catch(() => {});
     window.removeEventListener('pointerdown', warmModels);
   };
   window.addEventListener('pointerdown', warmModels, { once: true, passive: true });
@@ -273,5 +311,6 @@
     geometrySimilarity,
     extractGeometry,
     loadModels,
+    hasPaidAccess,
   };
 })();
