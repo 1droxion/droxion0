@@ -24,21 +24,23 @@
     return [...GROUPS.women, ...GROUPS.men];
   }
 
-  function deterministicPercent(name, rank) {
+  function initials(name) {
+    return name.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
+  }
+
+  function placeholderPercent(name, rank) {
     const source = `${name}|${window.FaceRevealResultSeed || 0}|${rank}`;
     let hash = 0;
     for (let i = 0; i < source.length; i += 1) hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
-    return 72 + (Math.abs(hash) % 24);
-  }
-
-  function initials(name) {
-    return name.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
+    return 60 + (Math.abs(hash) % 18);
   }
 
   function makeCard(name, rank) {
     const article = document.createElement('article');
     article.className = 'celebrity-card celebrity-match-card';
     article.dataset.name = name;
+    article.dataset.rank = String(rank);
+    article.dataset.similarity = '0';
 
     const media = document.createElement('div');
     media.className = 'celebrity-media';
@@ -54,11 +56,13 @@
     const title = document.createElement('strong');
     title.textContent = name;
     const pct = document.createElement('span');
-    pct.textContent = `${deterministicPercent(name, rank)}%`;
+    pct.className = 'celebrity-percent';
+    pct.textContent = `${placeholderPercent(name, rank)}%`;
     top.append(title, pct);
 
     const sub = document.createElement('small');
-    sub.textContent = 'entertainment vibe match';
+    sub.className = 'celebrity-sub';
+    sub.textContent = 'measuring facial resemblance…';
     body.append(top, sub);
     article.append(media, body);
     return article;
@@ -67,10 +71,68 @@
   function renderInstant(names) {
     grid.replaceChildren();
     names.forEach((name, index) => grid.appendChild(makeCard(name, index)));
-    status.textContent = `${names.length} results ready • loading portraits…`;
+    status.textContent = `${names.length} candidates ready • measuring resemblance…`;
   }
 
-  async function upgradeImages(names) {
+  function sortCards() {
+    const cards = [...grid.querySelectorAll('.celebrity-match-card')];
+    cards.sort((a, b) => Number(b.dataset.similarity || 0) - Number(a.dataset.similarity || 0));
+    cards.forEach((card) => grid.appendChild(card));
+  }
+
+  async function analyzeCelebrityCard(card, src, thisRequest) {
+    const media = card.querySelector('.celebrity-media');
+    const pct = card.querySelector('.celebrity-percent');
+    const sub = card.querySelector('.celebrity-sub');
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.alt = `${card.dataset.name} portrait`;
+
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = src;
+    });
+
+    if (thisRequest !== requestId) return false;
+    media.replaceChildren(img);
+
+    const api = window.FaceRevealFaceGate;
+    const userGeometry = window.FaceRevealUserGeometry;
+    if (!api?.analyzeGeometry || !api?.geometrySimilarity || !userGeometry) {
+      sub.textContent = 'portrait loaded';
+      return false;
+    }
+
+    try {
+      const celebrityGeometry = await api.analyzeGeometry(img);
+      if (!celebrityGeometry || thisRequest !== requestId) {
+        sub.textContent = 'portrait loaded';
+        return false;
+      }
+
+      const similarity = api.geometrySimilarity(userGeometry, celebrityGeometry);
+      if (!Number.isFinite(similarity)) {
+        sub.textContent = 'portrait loaded';
+        return false;
+      }
+
+      card.dataset.similarity = String(similarity);
+      pct.textContent = `${similarity}%`;
+      sub.textContent = 'facial-structure resemblance';
+      return true;
+    } catch (error) {
+      console.warn('Celebrity face analysis failed', card.dataset.name, error);
+      sub.textContent = 'portrait loaded';
+      return false;
+    }
+  }
+
+  async function upgradeImagesAndRank(names) {
     const thisRequest = ++requestId;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
@@ -93,37 +155,35 @@
       const data = await response.json();
       const pages = Object.values(data?.query?.pages || {}).filter((p) => !p.missing && p.thumbnail?.source);
       const byTitle = new Map(pages.map((p) => [p.title, p.thumbnail.source]));
-      let loaded = 0;
+      const cards = [...grid.querySelectorAll('.celebrity-match-card')];
 
-      grid.querySelectorAll('.celebrity-match-card').forEach((card) => {
+      let completed = 0;
+      let measured = 0;
+      status.textContent = `${names.length} candidates • comparing facial structure…`;
+
+      await Promise.allSettled(cards.map(async (card) => {
         const src = byTitle.get(card.dataset.name);
-        if (!src) return;
+        if (!src) {
+          completed += 1;
+          return;
+        }
+        const ok = await analyzeCelebrityCard(card, src, thisRequest);
+        if (ok) measured += 1;
+        completed += 1;
+        if (thisRequest === requestId) {
+          sortCards();
+          status.textContent = measured
+            ? `${measured} measured • ranking closest facial structures…`
+            : `${completed}/${names.length} portraits loaded`;
+        }
+      }));
 
-        const media = card.querySelector('.celebrity-media');
-        const img = new Image();
-        img.loading = 'eager';
-        img.decoding = 'async';
-        img.alt = `${card.dataset.name} portrait`;
-        img.referrerPolicy = 'no-referrer';
-
-        img.onload = () => {
-          if (thisRequest !== requestId) return;
-          media.replaceChildren(img);
-          loaded += 1;
-          status.textContent = loaded === names.length
-            ? `${names.length} celebrity portraits ready`
-            : `${names.length} results ready • ${loaded} portraits loaded`;
-        };
-
-        img.onerror = () => {
-          console.warn('Celebrity portrait failed to load', card.dataset.name, src);
-        };
-
-        // Important: eager loading allows detached images to start downloading.
-        // With lazy loading, some browsers never fired onload because the image
-        // was not inserted until after onload.
-        img.src = src;
-      });
+      if (thisRequest === requestId) {
+        sortCards();
+        status.textContent = measured
+          ? `${measured} facial resemblance scores measured`
+          : `${names.length} results ready`;
+      }
     } catch (error) {
       if (error?.name !== 'AbortError') console.warn('Celebrity portrait lookup failed', error);
       if (thisRequest === requestId) status.textContent = `${names.length} results ready`;
@@ -139,14 +199,14 @@
     const names = Array.from({ length: Math.min(pageSize, allNames.length) }, (_, i) => allNames[(offset + i) % allNames.length]);
 
     label.textContent = category === 'women'
-      ? 'Showing women celebrity-style inspirations you selected.'
+      ? 'Comparing your facial structure with women celebrity portraits you selected.'
       : category === 'men'
-        ? 'Showing men celebrity-style inspirations you selected.'
-        : 'Showing a mixed set of celebrity-style inspirations.';
+        ? 'Comparing your facial structure with men celebrity portraits you selected.'
+        : 'Comparing your facial structure with a mixed celebrity set.';
 
     renderInstant(names);
     refresh.disabled = false;
-    upgradeImages(names);
+    upgradeImagesAndRank(names);
   }
 
   refresh.addEventListener('click', () => {
@@ -155,9 +215,7 @@
   });
 
   document.querySelectorAll('input[name="celebrity-category"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-      offset = 0;
-    });
+    radio.addEventListener('change', () => { offset = 0; });
   });
 
   window.FaceRevealCelebrityMatches = { loadSet };
