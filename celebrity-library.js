@@ -1,50 +1,45 @@
 (() => {
-  const FEATURED_CELEBRITIES = [
-    'Taylor Swift',
-    'Zendaya',
-    'Selena Gomez',
-    'Ariana Grande',
-    'Rihanna',
-    'Beyoncé',
-    'Dwayne Johnson',
-    'Chris Hemsworth',
-    'Leonardo DiCaprio',
-    'Tom Holland',
-    'Margot Robbie',
-    'Priyanka Chopra Jonas',
-    'Shah Rukh Khan',
-    'Deepika Padukone',
-    'Ranveer Singh',
-    'Alia Bhatt',
-    'Hrithik Roshan',
-    'Jungkook',
-    'V (singer)',
-    'Lisa (rapper)',
-    'Jennie (singer)',
-    'Cristiano Ronaldo',
-    'Lionel Messi',
-    'Bad Bunny'
-  ];
+  const GROUPS = {
+    women: [
+      'Taylor Swift','Zendaya','Selena Gomez','Ariana Grande','Rihanna','Beyoncé','Margot Robbie','Priyanka Chopra Jonas','Deepika Padukone','Alia Bhatt','Lisa (rapper)','Jennie (singer)'
+    ],
+    men: [
+      'Dwayne Johnson','Chris Hemsworth','Leonardo DiCaprio','Tom Holland','Shah Rukh Khan','Ranveer Singh','Hrithik Roshan','Jungkook','V (singer)','Cristiano Ronaldo','Lionel Messi','Bad Bunny'
+    ]
+  };
 
   const API = 'https://en.wikipedia.org/w/api.php';
   const grid = document.getElementById('celebrity-grid');
-  const input = document.getElementById('celebrity-search');
-  const button = document.getElementById('celebrity-search-btn');
   const status = document.getElementById('celebrity-status');
+  const label = document.getElementById('celebrity-filter-label');
+  const refresh = document.getElementById('celebrity-refresh-btn');
+  if (!grid || !status || !label || !refresh) return;
 
-  if (!grid || !input || !button || !status) return;
+  let offset = 0;
 
-  function setStatus(message) {
-    status.textContent = message;
+  function selectedCategory() {
+    return document.querySelector('input[name="celebrity-category"]:checked')?.value || 'all';
   }
 
-  function makeCard(person) {
-    const card = document.createElement('article');
-    card.className = 'celebrity-card';
+  function namesForCategory(category) {
+    if (category === 'women') return GROUPS.women;
+    if (category === 'men') return GROUPS.men;
+    return [...GROUPS.women, ...GROUPS.men];
+  }
+
+  function deterministicPercent(name, rank) {
+    const source = `${name}|${window.FaceRevealResultSeed || 0}|${rank}`;
+    let hash = 0;
+    for (let i = 0; i < source.length; i += 1) hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
+    return 72 + (Math.abs(hash) % 24);
+  }
+
+  function card(person, rank) {
+    const article = document.createElement('article');
+    article.className = 'celebrity-card celebrity-match-card';
 
     const media = document.createElement('div');
     media.className = 'celebrity-media';
-
     if (person.thumbnail?.source) {
       const img = document.createElement('img');
       img.loading = 'lazy';
@@ -55,97 +50,75 @@
     } else {
       const fallback = document.createElement('div');
       fallback.className = 'celebrity-fallback';
-      fallback.textContent = person.title
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part[0] || '')
-        .join('')
-        .toUpperCase();
+      fallback.textContent = person.title.split(/\s+/).slice(0, 2).map((x) => x[0] || '').join('').toUpperCase();
       media.appendChild(fallback);
     }
 
+    const body = document.createElement('div');
+    body.className = 'celebrity-match-body';
+    const top = document.createElement('div');
+    top.className = 'celebrity-match-top';
     const name = document.createElement('strong');
     name.textContent = person.title;
+    const pct = document.createElement('span');
+    pct.textContent = `${deterministicPercent(person.title, rank)}%`;
+    top.append(name, pct);
 
-    const source = document.createElement('small');
-    source.textContent = 'Wikipedia / Wikimedia';
-
-    card.append(media, name, source);
-    return card;
+    const sub = document.createElement('small');
+    sub.textContent = 'entertainment vibe match';
+    body.append(top, sub);
+    article.append(media, body);
+    return article;
   }
 
-  function renderPeople(people) {
-    grid.replaceChildren();
-    people.forEach((person) => grid.appendChild(makeCard(person)));
-    setStatus(people.length ? `${people.length} celebrity images shown` : 'No celebrity images found.');
-  }
+  async function loadSet() {
+    const category = selectedCategory();
+    const allNames = namesForCategory(category);
+    const pageSize = 6;
+    const names = Array.from({ length: Math.min(pageSize, allNames.length) }, (_, i) => allNames[(offset + i) % allNames.length]);
 
-  async function fetchFeatured() {
-    setStatus('Loading global celebrity images…');
-    const params = new URLSearchParams({
-      origin: '*',
-      action: 'query',
-      format: 'json',
-      redirects: '1',
-      prop: 'pageimages',
-      piprop: 'thumbnail',
-      pithumbsize: '500',
-      titles: FEATURED_CELEBRITIES.join('|')
-    });
+    label.textContent = category === 'women'
+      ? 'Showing women celebrity-style inspirations you selected.'
+      : category === 'men'
+        ? 'Showing men celebrity-style inspirations you selected.'
+        : 'Showing a mixed set of celebrity-style inspirations.';
 
-    const response = await fetch(`${API}?${params.toString()}`);
-    if (!response.ok) throw new Error('Celebrity library request failed');
-    const data = await response.json();
-    const pages = Object.values(data?.query?.pages || {})
-      .filter((page) => !page.missing)
-      .sort((a, b) => FEATURED_CELEBRITIES.indexOf(a.title) - FEATURED_CELEBRITIES.indexOf(b.title));
-    renderPeople(pages);
-  }
-
-  async function searchCelebrities() {
-    const query = input.value.trim();
-    if (!query) {
-      await fetchFeatured();
-      return;
-    }
-
-    button.disabled = true;
-    setStatus(`Searching “${query}”…`);
+    status.textContent = 'Loading your entertainment matches…';
+    refresh.disabled = true;
 
     try {
       const params = new URLSearchParams({
-        origin: '*',
-        action: 'query',
-        format: 'json',
-        generator: 'search',
-        gsrsearch: `${query} incategory:Living_people`,
-        gsrlimit: '18',
-        prop: 'pageimages',
-        piprop: 'thumbnail',
-        pithumbsize: '500'
+        origin: '*', action: 'query', format: 'json', redirects: '1', prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '500', titles: names.join('|')
       });
-
       const response = await fetch(`${API}?${params.toString()}`);
-      if (!response.ok) throw new Error('Celebrity search failed');
+      if (!response.ok) throw new Error('Celebrity images unavailable');
       const data = await response.json();
-      const pages = Object.values(data?.query?.pages || {})
-        .sort((a, b) => (a.index || 999) - (b.index || 999));
-      renderPeople(pages);
+      const pages = Object.values(data?.query?.pages || {}).filter((p) => !p.missing);
+      const order = new Map(names.map((name, i) => [name, i]));
+      pages.sort((a, b) => (order.get(a.title) ?? 999) - (order.get(b.title) ?? 999));
+      grid.replaceChildren();
+      pages.forEach((person, i) => grid.appendChild(card(person, i)));
+      status.textContent = `${pages.length} celebrity-style inspirations shown`;
     } catch (error) {
       console.warn(error);
-      setStatus('Could not load celebrity images right now. Try again.');
+      status.textContent = 'Could not load celebrity images right now.';
     } finally {
-      button.disabled = false;
+      refresh.disabled = false;
     }
   }
 
-  button.addEventListener('click', searchCelebrities);
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') searchCelebrities();
+  refresh.addEventListener('click', () => {
+    offset += 6;
+    loadSet();
   });
 
-  fetchFeatured().catch((error) => {
-    console.warn(error);
-    setStatus('Could not load the celebrity library right now.');
+  document.querySelectorAll('input[name="celebrity-category"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      offset = 0;
+      loadSet();
+    });
   });
+
+  window.FaceRevealCelebrityMatches = { loadSet };
+  loadSet();
 })();
