@@ -22,11 +22,21 @@
     if (el) el.textContent = value;
   }
 
+  function setHolderState(img, state) {
+    const holder = img?.parentElement;
+    if (!holder) return;
+    holder.classList.remove('image-ready', 'image-error');
+    if (state) holder.classList.add(state);
+  }
+
   function clearImage(id) {
     const img = document.getElementById(id);
     if (!img) return;
+    img.onload = null;
+    img.onerror = null;
     img.removeAttribute('src');
     img.classList.remove('loaded');
+    setHolderState(img, null);
   }
 
   function proxied(src) {
@@ -35,10 +45,22 @@
 
   function setImage(id, src) {
     const img = document.getElementById(id);
-    if (!img) return;
+    if (!img || !src) return;
+
     img.classList.remove('loaded');
-    img.onload = () => img.classList.add('loaded');
-    img.onerror = () => img.classList.remove('loaded');
+    setHolderState(img, null);
+
+    img.onload = () => {
+      img.classList.add('loaded');
+      setHolderState(img, 'image-ready');
+    };
+
+    img.onerror = () => {
+      img.classList.remove('loaded');
+      setHolderState(img, 'image-error');
+      console.warn('Result portrait failed to display', id);
+    };
+
     img.src = proxied(src);
   }
 
@@ -105,10 +127,20 @@
 
     return sorted.map((item, index) => {
       const relative = (item.raw - worst) / spread;
-      const ceiling = 94 - index * 2;
-      const floor = Math.max(63, 76 - index * 4);
-      const percent = Math.round(floor + relative * (ceiling - floor));
-      return { ...item, percent };
+      const maxForRank = Math.max(78, 94 - index * 3);
+      const minForRank = Math.max(58, 74 - index * 4);
+      let percent = Math.round(minForRank + relative * (maxForRank - minForRank));
+
+      if (index > 0) {
+        const previous = sorted[index - 1];
+        const previousRelative = (previous.raw - worst) / spread;
+        const previousMax = Math.max(78, 94 - (index - 1) * 3);
+        const previousMin = Math.max(58, 74 - (index - 1) * 4);
+        const previousPercent = Math.round(previousMin + previousRelative * (previousMax - previousMin));
+        percent = Math.min(percent, previousPercent - 1);
+      }
+
+      return { ...item, percent: Math.max(50, percent) };
     });
   }
 
