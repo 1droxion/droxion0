@@ -47,7 +47,7 @@
 
       <div class="trust-row">
         <span>🔒 Stays on this device</span>
-        <span>⚡ ~10 sec demo</span>
+        <span>🙂 Human face required</span>
         <span>🎭 Entertainment only</span>
       </div>
 
@@ -61,7 +61,7 @@
       <button class="back-btn" data-back="home" aria-label="Go back">←</button>
       <div class="step-label">STEP 1 OF 2</div>
       <h2 id="upload-title">Choose a clear selfie</h2>
-      <p class="muted">One person, face visible, good lighting.</p>
+      <p class="muted">One person, face visible, good lighting. We now verify that a real human face is present before continuing.</p>
 
       <label class="upload-zone glass" id="upload-zone" for="file-input">
         <div class="upload-preview-wrap">
@@ -76,18 +76,18 @@
       <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
 
       <div class="tips glass-soft">
+        <div><span>✓</span> One human face only</div>
         <div><span>✓</span> Face the camera</div>
-        <div><span>✓</span> Avoid sunglasses</div>
         <div><span>✓</span> Use natural lighting</div>
       </div>
 
       <label class="consent-row">
         <input type="checkbox" id="consent" />
-        <span>I agree to process this photo for this demo result. In this demo, the photo stays in your browser and is not uploaded to a server.</span>
+        <span>I agree to process this photo for this demo result. In this demo, face detection runs locally in my browser and the photo is not uploaded to a server.</span>
       </label>
 
       <button class="cta cta-primary" id="analyze-btn" type="button" disabled>Analyze my face ✨</button>
-      <p class="fineprint">We do not claim attractiveness is objective or scientifically measurable.</p>
+      <p class="fineprint">No face, multiple faces, or a face that is too small/unclear will be rejected. We do not claim attractiveness is objective or scientifically measurable.</p>
     </section>
 
     <section class="screen" id="screen-scan" aria-labelledby="scan-title">
@@ -193,7 +193,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>Demo only • no payment • no server upload</p>
+    <p>Demo only • no payment • photo stays local</p>
     <button id="privacy-btn" type="button">Privacy in this demo</button>
   </footer>
 
@@ -202,12 +202,14 @@
       <button class="dialog-close" id="privacy-close" type="button" aria-label="Close privacy information">×</button>
       <div class="eyebrow">DEMO PRIVACY</div>
       <h2>Your photo stays local.</h2>
-      <p>This prototype uses a temporary browser object URL to preview your image. It does not upload the photo to our server, does not perform biometric recognition, and does not take payment.</p>
-      <p>The displayed score and visual-vibe result are deterministic demo values derived from basic file metadata so you can test the customer journey without being misled.</p>
+      <p>This prototype uses a temporary browser object URL to preview your image and a client-side face detector to verify that exactly one clear human face is present. The photo itself is not uploaded to our server or to the model CDN.</p>
+      <p>The detector library/model files are downloaded from jsDelivr. The displayed Face Score and visual-vibe result are still deterministic demo values so you can test the customer journey without being misled.</p>
     </div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" crossorigin="anonymous"></script>
+  <script src="face-validation.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
