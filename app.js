@@ -24,8 +24,7 @@ const consent = document.getElementById('consent');
 const analyzeBtn = document.getElementById('analyze-btn');
 const toast = document.getElementById('toast');
 
-// Filled as soon as the Stripe Payment Link / Checkout URL is created.
-const STRIPE_CHECKOUT_URL = '';
+const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/28E00j0izacW9lh1az7Re00';
 
 function track(event, data = {}) {
   console.info('[FaceReveal event]', event, data);
@@ -279,11 +278,12 @@ document.querySelectorAll('[data-back]').forEach((button) => {
 });
 
 document.getElementById('checkout-btn')?.addEventListener('click', () => {
-  track('checkout_clicked', { price: 9.99, currency: 'usd', price_id: 'price_1UCOnIEDfCCl7PuejRdiW3tv' });
-  if (!STRIPE_CHECKOUT_URL) {
-    showToast('Secure checkout is being activated. Please try again shortly.');
-    return;
-  }
+  track('checkout_clicked', {
+    price: 9.99,
+    currency: 'usd',
+    price_id: 'price_1UCOnIEDfCCl7PuejRdiW3tv',
+    payment_link_id: 'plink_1UCP0ZEDfCCl7PueZK6csmHR',
+  });
   window.location.assign(STRIPE_CHECKOUT_URL);
 });
 
