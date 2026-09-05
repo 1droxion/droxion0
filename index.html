@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#08080d" />
+  <meta name="description" content="FaceReveal — upload one selfie and preview a fun AI photo reveal." />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>FaceReveal — What does AI see?</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="FaceReveal home">
+      <span class="brand-mark">F</span>
+      <span>FaceReveal</span>
+    </a>
+    <button class="demo-pill" id="demo-banner" type="button">DEMO MODE</button>
+  </header>
+
+  <main>
+    <section class="screen screen-active" id="screen-home" aria-labelledby="home-title">
+      <div class="hero-copy">
+        <div class="eyebrow">AI PHOTO REVEAL</div>
+        <h1 id="home-title">What does AI<br><span>see in your face?</span></h1>
+        <p>Upload one selfie for a fun photo score, visual-vibe match, and personalized photo insights.</p>
+      </div>
+
+      <div class="hero-card glass">
+        <div class="fake-result">
+          <div class="avatar placeholder-avatar" aria-hidden="true"><span>YOU</span></div>
+          <div class="result-copy">
+            <small>FACE SCORE</small>
+            <strong>8.<span class="blurred-text">7</span><span class="lock-mini">🔒</span></strong>
+            <p>Your match is waiting 👀</p>
+          </div>
+          <div class="match-orb" aria-hidden="true">?</div>
+        </div>
+      </div>
+
+      <button class="cta cta-primary" id="home-upload-btn" type="button"><span class="cta-icon">↑</span>Upload my selfie</button>
+      <input id="home-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+
+      <div class="trust-row">
+        <span>🔒 Stays on this device</span>
+        <span>⚡ ~10 sec demo</span>
+        <span>🎭 Entertainment only</span>
+      </div>
+
+      <div class="social-proof">
+        <span class="proof-avatars"><i>👩🏽</i><i>👨🏻</i><i>👩🏼</i></span>
+        <span>Built for fast, shareable results.</span>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-upload" aria-labelledby="upload-title">
+      <button class="back-btn" data-back="home" aria-label="Go back">←</button>
+      <div class="step-label">STEP 1 OF 2</div>
+      <h2 id="upload-title">Choose a clear selfie</h2>
+      <p class="muted">One person, face visible, good lighting.</p>
+
+      <label class="upload-zone glass" id="upload-zone" for="file-input">
+        <div class="upload-preview-wrap">
+          <img id="upload-preview" alt="Your selected selfie preview" />
+          <div class="upload-empty" id="upload-empty">
+            <span class="upload-icon">＋</span>
+            <strong>Tap to choose photo</strong>
+            <small>JPG, PNG or WEBP • max 10 MB</small>
+          </div>
+        </div>
+      </label>
+      <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+
+      <div class="tips glass-soft">
+        <div><span>✓</span> Face the camera</div>
+        <div><span>✓</span> Avoid sunglasses</div>
+        <div><span>✓</span> Use natural lighting</div>
+      </div>
+
+      <label class="consent-row">
+        <input type="checkbox" id="consent" />
+        <span>I agree to process this photo for this demo result. In this demo, the photo stays in your browser and is not uploaded to a server.</span>
+      </label>
+
+      <button class="cta cta-primary" id="analyze-btn" type="button" disabled>Analyze my face ✨</button>
+      <p class="fineprint">We do not claim attractiveness is objective or scientifically measurable.</p>
+    </section>
+
+    <section class="screen" id="screen-scan" aria-labelledby="scan-title">
+      <div class="scan-shell">
+        <div class="scan-photo-wrap">
+          <img id="scan-photo" alt="Selfie being analyzed" />
+          <div class="scan-line"></div>
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+        </div>
+        <div class="scan-status">
+          <div class="spinner"></div>
+          <h2 id="scan-title">Reading your photo…</h2>
+          <p id="scan-message">Checking image quality</p>
+        </div>
+        <div class="scan-progress"><i id="scan-progress-bar"></i></div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-paywall" aria-labelledby="paywall-title">
+      <button class="back-btn" data-back="upload" aria-label="Go back">←</button>
+      <div class="eyebrow success">YOUR REVEAL IS READY</div>
+      <h2 id="paywall-title">We found your results 👀</h2>
+      <p class="muted">Here’s a preview. Unlock the full reveal below.</p>
+
+      <div class="locked-grid">
+        <article class="locked-card glass">
+          <small>AI FACE SCORE</small>
+          <div class="big-score"><span id="paywall-score-leading">8</span>.<span class="digit-lock">?</span><span>/10</span></div>
+          <div class="meter"><i style="width:87%"></i></div>
+          <p>Entertainment-based photo score</p>
+        </article>
+
+        <article class="locked-card glass twin-card">
+          <small>VISUAL-VIBE TWIN</small>
+          <div class="twin-placeholder">
+            <div class="mystery-face">?</div>
+            <div class="match-badge"><span>?</span><span id="paywall-match-last">4</span>% match</div>
+          </div>
+          <strong>Identity hidden</strong>
+          <p>Unlock to reveal your full demo result</p>
+        </article>
+      </div>
+
+      <div class="feature-peek glass-soft">
+        <div><span>👁</span><strong>Strongest feature</strong><em>Hidden 🔒</em></div>
+        <div><span>📸</span><strong>Photo style</strong><em>Hidden 🔒</em></div>
+        <div><span>✨</span><strong>Share card</strong><em>Included</em></div>
+      </div>
+
+      <div class="offer-card">
+        <span class="popular">BEST FIRST TEST</span>
+        <div><small>FULL REVEAL</small><strong>$9.99</strong><span>one-time</span></div>
+        <ul>
+          <li>Full entertainment Face Score</li>
+          <li>Visual-vibe twin reveal</li>
+          <li>Feature + photo-style suggestions</li>
+          <li>Shareable result card</li>
+        </ul>
+        <button class="cta cta-primary" id="checkout-btn" type="button">Unlock my results — $9.99</button>
+        <button class="text-button" id="demo-unlock-btn" type="button">Preview unlocked result — free demo</button>
+        <p class="checkout-note">Demo mode only — this button does not charge you.</p>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-result" aria-labelledby="result-title">
+      <div class="result-header">
+        <div class="eyebrow success">FULL REVEAL</div>
+        <h2 id="result-title">Your FaceReveal</h2>
+        <p class="muted">Demo output — not a biometric identification.</p>
+      </div>
+
+      <article class="score-card glass result-card">
+        <img id="result-photo" alt="Your uploaded selfie" />
+        <div class="score-overlay"><small>ENTERTAINMENT SCORE</small><strong id="demo-score">8.7</strong><span>/10</span></div>
+      </article>
+
+      <article class="match-card glass result-card">
+        <div class="match-head"><small>VISUAL-VIBE TWIN</small><span id="demo-match">84% visual vibe</span></div>
+        <div class="twin-result">
+          <img id="result-photo-small" alt="Your uploaded selfie" />
+          <div class="connector">≈</div>
+          <div class="fictional-twin"><div class="fictional-avatar">★</div><strong id="twin-label">Hollywood Lead</strong><small>Demo archetype</small></div>
+        </div>
+        <p class="legal-note">This demo does not identify a real person or perform biometric face recognition. A production celebrity-match feature would need a separately reviewed implementation.</p>
+      </article>
+
+      <article class="insights-card glass-soft">
+        <h3>Your photo insights</h3>
+        <div class="insight-row"><span>Strongest photo feature</span><strong id="strong-feature">Smile</strong></div>
+        <div class="insight-row"><span>Suggested photo style</span><strong id="photo-style">Natural light portrait</strong></div>
+        <div class="insight-row"><span>Face framing</span><strong id="face-frame">Centered close-up</strong></div>
+      </article>
+
+      <div class="share-card" id="share-card">
+        <div class="share-brand">FaceReveal</div>
+        <div class="share-content"><span>AI PHOTO REVEAL</span><strong><span id="share-score">8.7</span>/10</strong><p>My AI photo score 👀</p></div>
+        <div class="share-footer">What do you get?</div>
+      </div>
+
+      <button class="cta cta-primary" id="share-btn" type="button">Share my result</button>
+      <button class="cta cta-secondary" id="restart-btn" type="button">Try another photo</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Demo only • no payment • no server upload</p>
+    <button id="privacy-btn" type="button">Privacy in this demo</button>
+  </footer>
+
+  <dialog class="privacy-dialog" id="privacy-dialog">
+    <div class="dialog-card">
+      <button class="dialog-close" id="privacy-close" type="button" aria-label="Close privacy information">×</button>
+      <div class="eyebrow">DEMO PRIVACY</div>
+      <h2>Your photo stays local.</h2>
+      <p>This prototype uses a temporary browser object URL to preview your image. It does not upload the photo to our server, does not perform biometric recognition, and does not take payment.</p>
+      <p>The displayed score and visual-vibe result are deterministic demo values derived from basic file metadata so you can test the customer journey without being misled.</p>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
