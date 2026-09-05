@@ -9,6 +9,7 @@
   <title>FaceReveal — What does AI see?</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="celebrity-library.css" />
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -181,6 +182,22 @@
         <div class="insight-row"><span>Face framing</span><strong id="face-frame">Centered close-up</strong></div>
       </article>
 
+      <section class="celebrity-library" aria-labelledby="celebrity-library-title">
+        <div class="celebrity-library-head">
+          <div>
+            <h3 id="celebrity-library-title">Celebrity image library</h3>
+            <p>Featured public figures from around the world. Search any celebrity by name.</p>
+          </div>
+        </div>
+        <div class="celebrity-search-row">
+          <input id="celebrity-search" type="search" placeholder="Search celebrity name…" autocomplete="off" />
+          <button id="celebrity-search-btn" type="button">Search</button>
+        </div>
+        <p class="celebrity-status" id="celebrity-status">Loading celebrity images…</p>
+        <div class="celebrity-grid" id="celebrity-grid" aria-live="polite"></div>
+        <p class="celebrity-library-note">Prototype image source: Wikipedia/Wikimedia. This gallery is for browsing only and is not claiming that you look like any person shown. Production use should review image licensing and attribution requirements.</p>
+      </section>
+
       <div class="share-card" id="share-card">
         <div class="share-brand">FaceReveal</div>
         <div class="share-content"><span>AI PHOTO REVEAL</span><strong><span id="share-score">8.7</span>/10</strong><p>My AI photo score 👀</p></div>
@@ -211,5 +228,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js" crossorigin="anonymous"></script>
   <script src="face-validation.js"></script>
   <script src="app.js"></script>
+  <script src="celebrity-library.js"></script>
 </body>
 </html>
