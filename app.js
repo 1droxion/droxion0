@@ -23,7 +23,9 @@ const uploadEmpty = document.getElementById('upload-empty');
 const consent = document.getElementById('consent');
 const analyzeBtn = document.getElementById('analyze-btn');
 const toast = document.getElementById('toast');
-const demoBanner = document.getElementById('demo-banner');
+
+// Filled as soon as the Stripe Payment Link / Checkout URL is created.
+const STRIPE_CHECKOUT_URL = '';
 
 function track(event, data = {}) {
   console.info('[FaceReveal event]', event, data);
@@ -45,7 +47,7 @@ function showToast(message) {
   window.clearTimeout(showToast.timer);
   toast.textContent = message;
   toast.classList.add('show');
-  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2600);
+  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 function validateFile(file) {
@@ -78,7 +80,7 @@ function setPhoto(file) {
   track('photo_selected', { type: file.type, size: file.size });
 }
 
-function deriveDemoResult(file) {
+function deriveResult(file) {
   const seed = state.seed || (file.size + file.name.length * 131 + file.lastModified) % 1000;
   const score = Math.min(7.4 + (seed % 21) / 10, 9.4).toFixed(1);
   const match = 73 + (seed % 19);
@@ -107,7 +109,7 @@ function setImage(id, src) {
 
 function hydrateResult() {
   if (!state.file || !state.objectUrl) return;
-  const result = state.result || deriveDemoResult(state.file);
+  const result = state.result || deriveResult(state.file);
   state.result = result;
   state.score = result.score;
   state.match = result.match;
@@ -235,7 +237,7 @@ async function createShareCardBlob() {
 
 async function shareResult() {
   track('share_clicked');
-  const text = `My FaceReveal demo score is ${state.score}/10 👀`;
+  const text = `My FaceReveal score is ${state.score}/10 👀`;
   try {
     const blob = await createShareCardBlob();
     const file = new File([blob], 'facereveal-result.png', { type: 'image/png' });
@@ -277,24 +279,18 @@ document.querySelectorAll('[data-back]').forEach((button) => {
 });
 
 document.getElementById('checkout-btn')?.addEventListener('click', () => {
-  track('checkout_clicked', { price: 9.99, demo: true });
-  showToast('Demo mode: no payment will be taken. Tap “Preview unlocked result” below.');
-});
-
-document.getElementById('demo-unlock-btn')?.addEventListener('click', () => {
-  track('demo_unlocked');
-  hydrateResult();
-  showScreen('result');
-  window.FaceRevealCelebrityMatches?.loadSet?.();
+  track('checkout_clicked', { price: 9.99, currency: 'usd', price_id: 'price_1UCOnIEDfCCl7PuejRdiW3tv' });
+  if (!STRIPE_CHECKOUT_URL) {
+    showToast('Secure checkout is being activated. Please try again shortly.');
+    return;
+  }
+  window.location.assign(STRIPE_CHECKOUT_URL);
 });
 
 document.getElementById('restart-btn')?.addEventListener('click', resetApp);
 document.getElementById('share-btn')?.addEventListener('click', shareResult);
-
 document.getElementById('privacy-btn')?.addEventListener('click', () => document.getElementById('privacy-dialog')?.showModal());
 document.getElementById('privacy-close')?.addEventListener('click', () => document.getElementById('privacy-dialog')?.close());
-
-demoBanner?.addEventListener('click', () => showToast('Demo mode: your photo stays in this browser and no payment is taken.'));
 window.addEventListener('beforeunload', clearObjectUrl);
 
 window.runScan = runScan;
