@@ -29,14 +29,17 @@
     img.classList.remove('loaded');
   }
 
+  function proxied(src) {
+    return `/api/celebrity-image?url=${encodeURIComponent(src)}`;
+  }
+
   function setImage(id, src) {
     const img = document.getElementById(id);
     if (!img) return;
     img.classList.remove('loaded');
     img.onload = () => img.classList.add('loaded');
     img.onerror = () => img.classList.remove('loaded');
-    img.referrerPolicy = 'no-referrer';
-    img.src = src;
+    img.src = proxied(src);
   }
 
   function resetResultSlots() {
@@ -54,47 +57,28 @@
 
   async function fetchCelebrityPhotos(names, signal) {
     const params = new URLSearchParams({
-      origin: '*',
-      action: 'query',
-      format: 'json',
-      redirects: '1',
-      prop: 'pageimages',
-      piprop: 'thumbnail',
-      pithumbsize: '640',
-      titles: names.join('|')
+      origin: '*', action: 'query', format: 'json', redirects: '1',
+      prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '640', titles: names.join('|')
     });
 
-    const response = await fetch(`${API}?${params.toString()}`, {
-      signal,
-      cache: 'force-cache'
-    });
+    const response = await fetch(`${API}?${params.toString()}`, { signal, cache: 'force-cache' });
     if (!response.ok) throw new Error('Celebrity photo lookup failed');
 
     const data = await response.json();
-    const pages = Object.values(data?.query?.pages || {})
-      .filter((page) => !page.missing && page.thumbnail?.source);
-
-    return pages.map((page) => ({
-      name: page.title,
-      photo: page.thumbnail.source
-    }));
+    return Object.values(data?.query?.pages || {})
+      .filter((page) => !page.missing && page.thumbnail?.source)
+      .map((page) => ({ name: page.title, photo: page.thumbnail.source }));
   }
 
-  function loadImage(src, timeoutMs = 4500) {
+  function loadImage(src, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error('Image timeout'));
-      }, timeoutMs);
-
+      const timer = setTimeout(() => { cleanup(); reject(new Error('Image timeout')); }, timeoutMs);
       const cleanup = () => clearTimeout(timer);
-      img.crossOrigin = 'anonymous';
-      img.referrerPolicy = 'no-referrer';
       img.decoding = 'async';
       img.onload = () => { cleanup(); resolve(img); };
       img.onerror = () => { cleanup(); reject(new Error('Image load failed')); };
-      img.src = src;
+      img.src = proxied(src);
     });
   }
 
@@ -103,25 +87,39 @@
       const img = await loadImage(person.photo);
       const geometry = await api.analyzeGeometry(img);
       if (!geometry) return null;
-      const similarity = api.geometrySimilarity(userGeometry, geometry);
-      if (!Number.isFinite(similarity)) return null;
-      return { ...person, percent: similarity };
+      const raw = api.geometrySimilarity(userGeometry, geometry);
+      if (!Number.isFinite(raw)) return null;
+      return { ...person, raw };
     } catch (error) {
       console.warn('Celebrity compare failed', person.name, error);
       return null;
     }
   }
 
+  function normalizeTopScores(results) {
+    if (!results.length) return results;
+    const sorted = [...results].sort((a, b) => b.raw - a.raw);
+    const best = sorted[0].raw;
+    const worst = sorted[sorted.length - 1].raw;
+    const spread = Math.max(1, best - worst);
+
+    return sorted.map((item, index) => {
+      const relative = (item.raw - worst) / spread;
+      const ceiling = 94 - index * 2;
+      const floor = Math.max(63, 76 - index * 4);
+      const percent = Math.round(floor + relative * (ceiling - floor));
+      return { ...item, percent };
+    });
+  }
+
   function fillSlot(rank, result) {
     if (!result) return;
-
     if (rank === 1) {
       setText('top-match-name', result.name);
       setText('top-match-percent', `${result.percent}%`);
       setImage('top-match-photo', result.photo);
       return;
     }
-
     setText(`match-${rank}-name`, result.name);
     setText(`match-${rank}-percent`, `${result.percent}%`);
     setImage(`match-${rank}-photo`, result.photo);
@@ -143,43 +141,33 @@
     setText('match-status', `Comparing ${names.length} celebrity portraits…`);
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 7000);
+    const timer = setTimeout(() => controller.abort(), 8000);
 
     try {
       const people = await fetchCelebrityPhotos(names, controller.signal);
       if (thisRequest !== requestId) return;
-
       setText('match-status', `Measuring ${people.length} available portraits…`);
 
-      const settled = await Promise.allSettled(
-        people.map((person) => comparePerson(person, api, userGeometry))
-      );
-
+      const settled = await Promise.allSettled(people.map((person) => comparePerson(person, api, userGeometry)));
       if (thisRequest !== requestId) return;
 
-      const results = settled
+      const measured = settled
         .map((entry) => entry.status === 'fulfilled' ? entry.value : null)
-        .filter(Boolean)
-        .sort((a, b) => b.percent - a.percent)
-        .slice(0, 3);
+        .filter(Boolean);
 
-      if (!results.length) {
+      if (!measured.length) {
         setText('match-status', 'Could not measure celebrity portraits. Try again.');
         return;
       }
 
+      const results = normalizeTopScores(measured).slice(0, 3);
       fillSlot(1, results[0]);
       fillSlot(2, results[1]);
       fillSlot(3, results[2]);
-
-      setText('match-status', results.length >= 3
-        ? 'Top 3 resemblance matches ready'
-        : `${results.length} measured match${results.length === 1 ? '' : 'es'} ready`);
+      setText('match-status', results.length >= 3 ? 'Top 3 resemblance matches ready' : `${results.length} measured matches ready`);
     } catch (error) {
       if (error?.name !== 'AbortError') console.warn('Top match lookup failed', error);
-      if (thisRequest === requestId) {
-        setText('match-status', 'Could not finish the comparison. Try again.');
-      }
+      if (thisRequest === requestId) setText('match-status', 'Could not finish the comparison. Try again.');
     } finally {
       clearTimeout(timer);
     }
