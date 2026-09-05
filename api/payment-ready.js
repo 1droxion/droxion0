@@ -1,5 +1,5 @@
 const PAYMENT_LINK_ID = 'plink_1UCP0ZEDfCCl7PueZK6csmHR';
-const EXPECTED_RETURN_HOST = 'droxion0.vercel.app';
+const EXPECTED_RETURN_HOST = 'facereveal.sansaar.app';
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
