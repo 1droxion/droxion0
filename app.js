@@ -23,8 +23,12 @@ const uploadEmpty = document.getElementById('upload-empty');
 const consent = document.getElementById('consent');
 const analyzeBtn = document.getElementById('analyze-btn');
 const toast = document.getElementById('toast');
+const checkoutBtn = document.getElementById('checkout-btn');
 
 const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/28E00j0izacW9lh1az7Re00';
+const PENDING_DB = 'facereveal-pending-v1';
+const PENDING_STORE = 'checkout';
+const PENDING_KEY = 'pending-reveal';
 
 function track(event, data = {}) {
   console.info('[FaceReveal event]', event, data);
@@ -46,7 +50,7 @@ function showToast(message) {
   window.clearTimeout(showToast.timer);
   toast.textContent = message;
   toast.classList.add('show');
-  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3000);
+  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
 function validateFile(file) {
@@ -59,6 +63,15 @@ function validateFile(file) {
 function clearObjectUrl() {
   if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
   state.objectUrl = null;
+}
+
+function selectedCategory() {
+  return document.querySelector('input[name="celebrity-category"]:checked')?.value || 'all';
+}
+
+function applyCategory(value) {
+  const radio = document.querySelector(`input[name="celebrity-category"][value="${value}"]`);
+  if (radio) radio.checked = true;
 }
 
 function setPhoto(file) {
@@ -156,6 +169,123 @@ function runScan() {
     if (msg) msg.textContent = messages[index][0];
     if (bar) bar.style.width = `${messages[index][1]}%`;
   }, 600);
+}
+
+function openPendingDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(PENDING_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(PENDING_STORE)) db.createObjectStore(PENDING_STORE);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Could not open local checkout storage.'));
+  });
+}
+
+async function savePendingReveal() {
+  if (!state.file) throw new Error('No selfie selected.');
+  const db = await openPendingDb();
+  const payload = {
+    blob: state.file,
+    name: state.file.name || 'facereveal-selfie.jpg',
+    type: state.file.type,
+    lastModified: state.file.lastModified || Date.now(),
+    category: selectedCategory(),
+    createdAt: Date.now(),
+  };
+
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(PENDING_STORE, 'readwrite');
+    tx.objectStore(PENDING_STORE).put(payload, PENDING_KEY);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error || new Error('Could not save selfie before checkout.'));
+  });
+  db.close();
+}
+
+async function loadPendingReveal() {
+  const db = await openPendingDb();
+  const payload = await new Promise((resolve, reject) => {
+    const tx = db.transaction(PENDING_STORE, 'readonly');
+    const request = tx.objectStore(PENDING_STORE).get(PENDING_KEY);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error || new Error('Could not restore selfie.'));
+  });
+  db.close();
+  return payload;
+}
+
+async function clearPendingReveal() {
+  const db = await openPendingDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(PENDING_STORE, 'readwrite');
+    tx.objectStore(PENDING_STORE).delete(PENDING_KEY);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error || new Error('Could not clear checkout storage.'));
+  });
+  db.close();
+}
+
+async function verifyPayment(sessionId) {
+  const response = await fetch(`/api/verify-payment?session_id=${encodeURIComponent(sessionId)}`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.reason || 'Payment could not be verified.');
+  return data;
+}
+
+async function restorePaidReveal(sessionId) {
+  showScreen('scan');
+  setText('scan-message', 'Verifying your payment…');
+  const bar = document.getElementById('scan-progress-bar');
+  if (bar) bar.style.width = '35%';
+
+  try {
+    await verifyPayment(sessionId);
+    if (bar) bar.style.width = '55%';
+    setText('scan-message', 'Restoring your selfie…');
+
+    const pending = await loadPendingReveal();
+    if (!pending?.blob) throw new Error('Your saved selfie was not found on this device.');
+    if (Date.now() - Number(pending.createdAt || 0) > 24 * 60 * 60 * 1000) throw new Error('Your saved selfie expired. Please contact support with your receipt.');
+
+    const file = new File([pending.blob], pending.name || 'facereveal-selfie.jpg', {
+      type: pending.type || pending.blob.type || 'image/jpeg',
+      lastModified: pending.lastModified || Date.now(),
+    });
+
+    setPhoto(file);
+    applyCategory(pending.category || 'all');
+    consent.checked = true;
+    analyzeBtn.disabled = false;
+
+    if (bar) bar.style.width = '72%';
+    setText('scan-message', 'Rebuilding your result…');
+
+    const gate = window.FaceRevealFaceGate;
+    if (!gate?.validateOneClearFace) throw new Error('Face analyzer is unavailable.');
+    const faceResult = await gate.validateOneClearFace(preview);
+    if (!faceResult?.ok) throw new Error(faceResult?.message || 'Could not restore face measurements.');
+
+    hydrateResult();
+    if (bar) bar.style.width = '100%';
+    setText('scan-message', 'Payment verified ✓');
+    track('purchase_verified', { value: 9.99, currency: 'USD', session_id: sessionId });
+
+    await clearPendingReveal().catch(() => {});
+    window.history.replaceState({}, document.title, window.location.pathname);
+    showScreen('result');
+    window.FaceRevealCelebrityMatches?.loadSet?.();
+  } catch (error) {
+    console.error('Paid reveal restore failed', error);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    showScreen('home');
+    showToast(error.message || 'We could not restore your paid result.');
+  }
 }
 
 function resetApp() {
@@ -277,14 +407,32 @@ document.querySelectorAll('[data-back]').forEach((button) => {
   button.addEventListener('click', () => showScreen(button.dataset.back));
 });
 
-document.getElementById('checkout-btn')?.addEventListener('click', () => {
-  track('checkout_clicked', {
-    price: 9.99,
-    currency: 'usd',
-    price_id: 'price_1UCOnIEDfCCl7PuejRdiW3tv',
-    payment_link_id: 'plink_1UCP0ZEDfCCl7PueZK6csmHR',
-  });
-  window.location.assign(STRIPE_CHECKOUT_URL);
+checkoutBtn?.addEventListener('click', async () => {
+  if (!state.file) {
+    showToast('Your selfie is missing. Please upload it again.');
+    showScreen('upload');
+    return;
+  }
+
+  checkoutBtn.disabled = true;
+  const oldLabel = checkoutBtn.textContent;
+  checkoutBtn.textContent = 'Opening secure checkout…';
+
+  try {
+    await savePendingReveal();
+    track('checkout_clicked', {
+      price: 9.99,
+      currency: 'usd',
+      price_id: 'price_1UCOnIEDfCCl7PuejRdiW3tv',
+      payment_link_id: 'plink_1UCP0ZEDfCCl7PueZK6csmHR',
+    });
+    window.location.assign(STRIPE_CHECKOUT_URL);
+  } catch (error) {
+    console.error('Could not prepare checkout', error);
+    checkoutBtn.disabled = false;
+    checkoutBtn.textContent = oldLabel;
+    showToast('Could not prepare secure checkout. Please try again.');
+  }
 });
 
 document.getElementById('restart-btn')?.addEventListener('click', resetApp);
@@ -296,4 +444,10 @@ window.addEventListener('beforeunload', clearObjectUrl);
 window.runScan = runScan;
 window.showToast = showToast;
 window.FaceRevealApp = { showScreen, hydrateResult, resetApp };
-track('landing_view');
+
+const returnedSessionId = new URLSearchParams(window.location.search).get('session_id');
+if (returnedSessionId) {
+  restorePaidReveal(returnedSessionId);
+} else {
+  track('landing_view');
+}
