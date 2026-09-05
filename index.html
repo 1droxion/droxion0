@@ -138,8 +138,8 @@
       </div>
 
       <div class="feature-peek glass-soft">
-        <div><span>🎬</span><strong>Celebrity resemblance cards</strong><em>Hidden 🔒</em></div>
-        <div><span>📊</span><strong>Measured percentages</strong><em>Hidden 🔒</em></div>
+        <div><span>🎬</span><strong>Top celebrity resemblance</strong><em>Hidden 🔒</em></div>
+        <div><span>📊</span><strong>Two runner-up matches</strong><em>Hidden 🔒</em></div>
         <div><span>✨</span><strong>Share card</strong><em>Included</em></div>
       </div>
 
@@ -148,7 +148,7 @@
         <div><small>FULL REVEAL</small><strong>$9.99</strong><span>one-time</span></div>
         <ul>
           <li>Full entertainment Face Score</li>
-          <li>Measured facial-structure resemblance cards</li>
+          <li>Top 3 facial-structure resemblance matches</li>
           <li>Photo-style suggestions</li>
           <li>Shareable result card</li>
         </ul>
@@ -162,26 +162,78 @@
       <div class="result-header">
         <div class="eyebrow success">FULL REVEAL</div>
         <h2 id="result-title">Your FaceReveal</h2>
-        <p class="muted">Entertainment resemblance analysis. It compares visible facial geometry and does not identify who you are.</p>
+        <p class="muted">Your closest facial-structure resemblance from the available celebrity set.</p>
       </div>
 
-      <section class="celebrity-library" aria-labelledby="celebrity-library-title">
-        <div class="celebrity-library-head">
-          <div>
-            <div class="match-kicker">YOUR RESEMBLANCE RESULTS</div>
-            <h3 id="celebrity-library-title">Closest facial structures</h3>
-            <p id="celebrity-filter-label">Comparing facial proportions with a curated public-figure set.</p>
+      <section class="top-match-section glass" aria-labelledby="top-match-title">
+        <div class="match-kicker">YOUR TOP MATCH</div>
+        <h3 id="top-match-title">Highest resemblance</h3>
+        <p class="match-progress" id="match-status">Finding your closest match…</p>
+
+        <div class="top-match-layout">
+          <div class="top-match-person">
+            <div class="match-photo-shell">
+              <img id="result-photo" alt="Your uploaded selfie" />
+            </div>
+            <span class="match-person-label">You</span>
+          </div>
+
+          <div class="top-match-center">
+            <div class="top-match-percent" id="top-match-percent">—</div>
+            <div class="top-match-label">TOP MATCH</div>
+          </div>
+
+          <div class="top-match-person">
+            <div class="match-photo-shell celebrity-shell" id="top-match-photo-shell">
+              <div class="match-photo-placeholder">?</div>
+              <img id="top-match-photo" alt="Top celebrity resemblance" />
+            </div>
+            <span class="match-person-label" id="top-match-name">Finding match…</span>
           </div>
         </div>
-        <p class="celebrity-status" id="celebrity-status">Measuring facial resemblance…</p>
-        <div class="celebrity-grid" id="celebrity-grid" aria-live="polite"></div>
-        <button class="load-another" id="celebrity-refresh-btn" type="button">Compare another set</button>
-        <p class="celebrity-library-note">Percentages are based on normalized facial landmark proportions in the available photos. They are approximate resemblance scores, not identity verification. Prototype celebrity images come from Wikipedia/Wikimedia.</p>
       </section>
 
-      <article class="score-card glass result-card score-after-matches">
-        <img id="result-photo" alt="Your uploaded selfie" />
-        <div class="score-overlay"><small>ENTERTAINMENT FACE SCORE</small><strong id="demo-score">8.7</strong><span>/10</span></div>
+      <section class="more-matches-section" aria-labelledby="more-matches-title">
+        <div class="section-title-row">
+          <div>
+            <div class="match-kicker">NEXT CLOSEST</div>
+            <h3 id="more-matches-title">2 more matches</h3>
+          </div>
+        </div>
+
+        <div class="more-matches-grid">
+          <article class="small-match-card glass" id="match-2-card">
+            <div class="small-match-photo">
+              <div class="match-photo-placeholder">?</div>
+              <img id="match-2-photo" alt="Second celebrity resemblance" />
+            </div>
+            <div class="small-match-info">
+              <strong id="match-2-name">Finding match…</strong>
+              <span id="match-2-percent">—</span>
+              <small>#2 resemblance</small>
+            </div>
+          </article>
+
+          <article class="small-match-card glass" id="match-3-card">
+            <div class="small-match-photo">
+              <div class="match-photo-placeholder">?</div>
+              <img id="match-3-photo" alt="Third celebrity resemblance" />
+            </div>
+            <div class="small-match-info">
+              <strong id="match-3-name">Finding match…</strong>
+              <span id="match-3-percent">—</span>
+              <small>#3 resemblance</small>
+            </div>
+          </article>
+        </div>
+
+        <p class="resemblance-note">Percentages compare normalized facial landmark proportions in the available photos. They are approximate resemblance scores, not identity verification.</p>
+      </section>
+
+      <article class="face-score-panel glass-soft">
+        <small>ENTERTAINMENT FACE SCORE</small>
+        <div class="face-score-value"><strong id="demo-score">8.7</strong><span>/10</span></div>
+        <p>Your photo score is shown separately from celebrity resemblance.</p>
       </article>
 
       <article class="insights-card glass-soft">
@@ -190,12 +242,6 @@
         <div class="insight-row"><span>Suggested photo style</span><strong id="photo-style">Natural light portrait</strong></div>
         <div class="insight-row"><span>Face framing</span><strong id="face-frame">Centered close-up</strong></div>
       </article>
-
-      <div class="share-card" id="share-card">
-        <div class="share-brand">FaceReveal</div>
-        <div class="share-content"><span>AI PHOTO REVEAL</span><strong><span id="share-score">8.7</span>/10</strong><p>My AI photo score 👀</p></div>
-        <div class="share-footer">What do you get?</div>
-      </div>
 
       <button class="cta cta-primary" id="share-btn" type="button">Share my result</button>
       <button class="cta cta-secondary" id="restart-btn" type="button">Try another photo</button>
