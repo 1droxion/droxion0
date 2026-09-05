@@ -13,6 +13,7 @@ const state = {
   match: 84,
   result: null,
   scanTimer: null,
+  seed: 0,
 };
 
 const fileInput = document.getElementById('file-input');
@@ -30,6 +31,7 @@ function track(event, data = {}) {
 
 function showScreen(name) {
   Object.entries(screens).forEach(([key, screen]) => {
+    if (!screen) return;
     const active = key === name;
     screen.classList.toggle('screen-active', active);
     screen.setAttribute('aria-hidden', String(!active));
@@ -39,6 +41,7 @@ function showScreen(name) {
 }
 
 function showToast(message) {
+  if (!toast) return;
   window.clearTimeout(showToast.timer);
   toast.textContent = message;
   toast.classList.add('show');
@@ -47,9 +50,7 @@ function showToast(message) {
 
 function validateFile(file) {
   if (!file) return 'Please choose a photo.';
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    return 'Please use a JPG, PNG, or WEBP image.';
-  }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return 'Please use a JPG, PNG, or WEBP image.';
   if (file.size > 10 * 1024 * 1024) return 'Please choose a photo smaller than 10 MB.';
   return null;
 }
@@ -67,6 +68,8 @@ function setPhoto(file) {
   state.file = file;
   state.objectUrl = URL.createObjectURL(file);
   state.result = null;
+  state.seed = (file.size + file.name.length * 131 + file.lastModified) % 100000;
+  window.FaceRevealResultSeed = state.seed;
 
   preview.src = state.objectUrl;
   preview.style.display = 'block';
@@ -76,13 +79,12 @@ function setPhoto(file) {
 }
 
 function deriveDemoResult(file) {
-  const seed = (file.size + file.name.length * 131 + file.lastModified) % 1000;
+  const seed = state.seed || (file.size + file.name.length * 131 + file.lastModified) % 1000;
   const score = Math.min(7.4 + (seed % 21) / 10, 9.4).toFixed(1);
   const match = 73 + (seed % 19);
   const features = ['Smile', 'Eyes in this photo', 'Expression', 'Face framing', 'Lighting balance'];
   const styles = ['Natural-light portrait', 'Soft studio portrait', 'Golden-hour photo', 'Clean monochrome portrait', 'Street-style portrait'];
   const frames = ['Centered close-up', 'Slight three-quarter angle', 'Eye-level portrait', 'Shoulder-up portrait'];
-  const archetypes = ['Hollywood Lead', 'Pop-Star Energy', 'Editorial Model', 'Rom-Com Lead', 'Action-Hero Vibe'];
 
   return {
     score,
@@ -90,8 +92,17 @@ function deriveDemoResult(file) {
     feature: features[seed % features.length],
     style: styles[seed % styles.length],
     frame: frames[seed % frames.length],
-    archetype: archetypes[seed % archetypes.length],
   };
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function setImage(id, src) {
+  const el = document.getElementById(id);
+  if (el) el.src = src;
 }
 
 function hydrateResult() {
@@ -101,39 +112,33 @@ function hydrateResult() {
   state.score = result.score;
   state.match = result.match;
 
-  ['result-photo', 'result-photo-small'].forEach((id) => {
-    document.getElementById(id).src = state.objectUrl;
-  });
-
-  document.getElementById('demo-score').textContent = result.score;
-  document.getElementById('share-score').textContent = result.score;
-  document.getElementById('demo-match').textContent = `${result.match}% visual vibe`;
-  document.getElementById('strong-feature').textContent = result.feature;
-  document.getElementById('photo-style').textContent = result.style;
-  document.getElementById('face-frame').textContent = result.frame;
-  document.getElementById('twin-label').textContent = result.archetype;
-  document.getElementById('paywall-score-leading').textContent = result.score.charAt(0);
-  document.getElementById('paywall-match-last').textContent = result.match.toString().slice(-1);
+  setImage('result-photo', state.objectUrl);
+  setText('demo-score', result.score);
+  setText('share-score', result.score);
+  setText('strong-feature', result.feature);
+  setText('photo-style', result.style);
+  setText('face-frame', result.frame);
+  setText('paywall-score-leading', result.score.charAt(0));
+  setText('paywall-match-last', result.match.toString().slice(-1));
 }
 
 function runScan() {
   if (!state.file || !consent.checked) return;
-
   if (state.scanTimer) window.clearInterval(state.scanTimer);
-  document.getElementById('scan-photo').src = state.objectUrl;
+
+  setImage('scan-photo', state.objectUrl);
   const msg = document.getElementById('scan-message');
   const bar = document.getElementById('scan-progress-bar');
   const messages = [
-    ['Checking image quality', 14],
-    ['Reading photo composition', 36],
-    ['Preparing your entertainment score', 62],
-    ['Creating your visual-vibe result', 84],
-    ['Reveal ready', 100],
+    ['Face verified ✓', 24],
+    ['Reading photo', 52],
+    ['Building your reveal', 78],
+    ['Ready', 100],
   ];
 
   let index = 0;
-  msg.textContent = messages[0][0];
-  bar.style.width = `${messages[0][1]}%`;
+  if (msg) msg.textContent = messages[0][0];
+  if (bar) bar.style.width = `${messages[0][1]}%`;
   showScreen('scan');
   track('analysis_started');
 
@@ -144,12 +149,12 @@ function runScan() {
       state.scanTimer = null;
       hydrateResult();
       track('analysis_completed');
-      window.setTimeout(() => showScreen('paywall'), 350);
+      showScreen('paywall');
       return;
     }
-    msg.textContent = messages[index][0];
-    bar.style.width = `${messages[index][1]}%`;
-  }, 520);
+    if (msg) msg.textContent = messages[index][0];
+    if (bar) bar.style.width = `${messages[index][1]}%`;
+  }, 600);
 }
 
 function resetApp() {
@@ -157,16 +162,19 @@ function resetApp() {
   state.scanTimer = null;
   state.file = null;
   state.result = null;
+  state.seed = 0;
+  window.FaceRevealResultSeed = 0;
   clearObjectUrl();
 
-  preview.removeAttribute('src');
-  preview.style.display = 'none';
-  uploadEmpty.style.display = 'grid';
-  fileInput.value = '';
-  homeFileInput.value = '';
-  consent.checked = false;
-  analyzeBtn.disabled = true;
-  document.getElementById('scan-progress-bar').style.width = '8%';
+  preview?.removeAttribute('src');
+  if (preview) preview.style.display = 'none';
+  if (uploadEmpty) uploadEmpty.style.display = 'grid';
+  if (fileInput) fileInput.value = '';
+  if (homeFileInput) homeFileInput.value = '';
+  if (consent) consent.checked = false;
+  if (analyzeBtn) analyzeBtn.disabled = true;
+  const progress = document.getElementById('scan-progress-bar');
+  if (progress) progress.style.width = '8%';
   showScreen('home');
 }
 
@@ -195,23 +203,12 @@ async function createShareCardBlob() {
   canvas.width = 1080;
   canvas.height = 1920;
   const ctx = canvas.getContext('2d');
-
   const bg = ctx.createLinearGradient(0, 0, 1080, 1920);
   bg.addColorStop(0, '#26133d');
   bg.addColorStop(0.52, '#100c18');
   bg.addColorStop(1, '#07070b');
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 1080, 1920);
-
-  const glow = ctx.createRadialGradient(860, 210, 10, 860, 210, 520);
-  glow.addColorStop(0, 'rgba(255,110,199,.55)');
-  glow.addColorStop(1, 'rgba(255,110,199,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, 1080, 800);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '700 44px system-ui, sans-serif';
-  ctx.fillText('FaceReveal', 74, 105);
 
   const img = await imageFromObjectUrl(state.objectUrl);
   ctx.save();
@@ -223,33 +220,15 @@ async function createShareCardBlob() {
   ctx.drawImage(img, 74 + (932 - w) / 2, 190 + (932 - h) / 2, w, h);
   ctx.restore();
 
-  const overlay = ctx.createLinearGradient(0, 650, 0, 1122);
-  overlay.addColorStop(0, 'rgba(0,0,0,0)');
-  overlay.addColorStop(1, 'rgba(0,0,0,.82)');
-  ctx.fillStyle = overlay;
-  ctx.fillRect(74, 620, 932, 502);
-
-  ctx.fillStyle = '#cdb8ff';
-  ctx.font = '800 28px system-ui, sans-serif';
-  ctx.fillText('AI PHOTO REVEAL', 90, 1218);
-
   ctx.fillStyle = '#ffffff';
+  ctx.font = '700 44px system-ui, sans-serif';
+  ctx.fillText('FaceReveal', 74, 105);
   ctx.font = '800 185px system-ui, sans-serif';
   ctx.fillText(state.score, 84, 1430);
   ctx.font = '700 48px system-ui, sans-serif';
   ctx.fillText('/10', 468, 1425);
-
-  ctx.fillStyle = '#ffffff';
   ctx.font = '700 52px system-ui, sans-serif';
   ctx.fillText('My FaceReveal result 👀', 84, 1535);
-
-  ctx.fillStyle = '#aaa7b6';
-  ctx.font = '500 34px system-ui, sans-serif';
-  ctx.fillText(`${state.match}% visual-vibe match • ${state.result?.archetype || 'Demo archetype'}`, 84, 1600);
-
-  ctx.fillStyle = '#b8b4c4';
-  ctx.font = '600 32px system-ui, sans-serif';
-  ctx.fillText('What do you get?', 84, 1815);
 
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.95));
 }
@@ -257,7 +236,6 @@ async function createShareCardBlob() {
 async function shareResult() {
   track('share_clicked');
   const text = `My FaceReveal demo score is ${state.score}/10 👀`;
-
   try {
     const blob = await createShareCardBlob();
     const file = new File([blob], 'facereveal-result.png', { type: 'image/png' });
@@ -268,71 +246,58 @@ async function shareResult() {
   } catch (error) {
     console.warn('Image share unavailable', error);
   }
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'My FaceReveal', text });
-      return;
-    } catch (error) {
-      if (error?.name === 'AbortError') return;
-    }
-  }
-
   try {
     await navigator.clipboard.writeText(text);
-    showToast('Share text copied to clipboard.');
+    showToast('Share text copied.');
   } catch {
     showToast(text);
   }
 }
 
-document.getElementById('home-upload-btn').addEventListener('click', () => {
+document.getElementById('home-upload-btn')?.addEventListener('click', () => {
   track('upload_started');
-  homeFileInput.click();
+  homeFileInput?.click();
 });
 
-homeFileInput.addEventListener('change', (event) => {
+homeFileInput?.addEventListener('change', (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
   setPhoto(file);
   showScreen('upload');
 });
 
-fileInput.addEventListener('change', (event) => setPhoto(event.target.files?.[0]));
-consent.addEventListener('change', () => {
+fileInput?.addEventListener('change', (event) => setPhoto(event.target.files?.[0]));
+consent?.addEventListener('change', () => {
   analyzeBtn.disabled = !(state.file && consent.checked);
 });
-analyzeBtn.addEventListener('click', runScan);
+analyzeBtn?.addEventListener('click', runScan);
 
 document.querySelectorAll('[data-back]').forEach((button) => {
   button.addEventListener('click', () => showScreen(button.dataset.back));
 });
 
-document.getElementById('checkout-btn').addEventListener('click', () => {
+document.getElementById('checkout-btn')?.addEventListener('click', () => {
   track('checkout_clicked', { price: 9.99, demo: true });
   showToast('Demo mode: no payment will be taken. Tap “Preview unlocked result” below.');
 });
 
-document.getElementById('demo-unlock-btn').addEventListener('click', () => {
+document.getElementById('demo-unlock-btn')?.addEventListener('click', () => {
   track('demo_unlocked');
   hydrateResult();
   showScreen('result');
+  window.FaceRevealCelebrityMatches?.loadSet?.();
 });
 
-document.getElementById('restart-btn').addEventListener('click', resetApp);
-document.getElementById('share-btn').addEventListener('click', shareResult);
+document.getElementById('restart-btn')?.addEventListener('click', resetApp);
+document.getElementById('share-btn')?.addEventListener('click', shareResult);
 
-document.getElementById('privacy-btn').addEventListener('click', () => {
-  document.getElementById('privacy-dialog').showModal();
-});
+document.getElementById('privacy-btn')?.addEventListener('click', () => document.getElementById('privacy-dialog')?.showModal());
+document.getElementById('privacy-close')?.addEventListener('click', () => document.getElementById('privacy-dialog')?.close());
 
-document.getElementById('privacy-close').addEventListener('click', () => {
-  document.getElementById('privacy-dialog').close();
-});
-
-if (demoBanner) {
-  demoBanner.addEventListener('click', () => showToast('Demo mode: your photo stays in this browser and no payment is taken.'));
-}
-
+demoBanner?.addEventListener('click', () => showToast('Demo mode: your photo stays in this browser and no payment is taken.'));
 window.addEventListener('beforeunload', clearObjectUrl);
+
+window.runScan = runScan;
+window.showToast = showToast;
+window.FaceRevealApp = { showScreen, hydrateResult, resetApp };
 track('landing_view');
