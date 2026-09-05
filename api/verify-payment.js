@@ -1,7 +1,22 @@
+const crypto = require('crypto');
+
 const EXPECTED_PAYMENT_LINK_ID = 'plink_1UCP0ZEDfCCl7PueZK6csmHR';
 const EXPECTED_PRICE_ID = 'price_1UCOnIEDfCCl7PuejRdiW3tv';
 const EXPECTED_AMOUNT = 999;
 const EXPECTED_CURRENCY = 'usd';
+const ACCESS_COOKIE = 'facereveal_access';
+const ACCESS_SECONDS = 60 * 60 * 24 * 400;
+
+function accessKey(secret) {
+  return crypto.createHash('sha256').update(`facereveal-access:${secret}`).digest();
+}
+
+function createAccessToken(secret) {
+  const expires = Math.floor(Date.now() / 1000) + ACCESS_SECONDS;
+  const payload = `v1.${expires}`;
+  const signature = crypto.createHmac('sha256', accessKey(secret)).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -60,8 +75,15 @@ module.exports = async function handler(req, res) {
       return;
     }
 
+    const accessToken = createAccessToken(secret);
+    res.setHeader(
+      'Set-Cookie',
+      `${ACCESS_COOKIE}=${accessToken}; Max-Age=${ACCESS_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax`
+    );
+
     res.status(200).json({
       ok: true,
+      entitled: true,
       session_id: session.id,
       amount_total: session.amount_total,
       currency: session.currency,
