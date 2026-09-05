@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#08080d" />
-  <meta name="description" content="FaceReveal — upload one selfie and preview a fun facial-structure resemblance reveal." />
+  <meta name="description" content="FaceReveal — upload one selfie and unlock a facial-structure resemblance reveal." />
   <meta name="robots" content="noindex,nofollow" />
   <title>FaceReveal — What does AI see?</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -20,7 +20,7 @@
       <span class="brand-mark">F</span>
       <span>FaceReveal</span>
     </a>
-    <button class="demo-pill" id="demo-banner" type="button">DEMO MODE</button>
+    <div class="demo-pill">$9.99 • ONE-TIME</div>
   </header>
 
   <main>
@@ -28,7 +28,7 @@
       <div class="hero-copy">
         <div class="eyebrow">AI PHOTO REVEAL</div>
         <h1 id="home-title">What does AI<br><span>see in your face?</span></h1>
-        <p>Upload one selfie for a fun photo score, facial-structure resemblance matches, and personalized photo insights.</p>
+        <p>Upload one selfie for an entertainment Face Score, facial-structure resemblance matches, and personalized photo insights.</p>
       </div>
 
       <div class="hero-card glass">
@@ -47,9 +47,9 @@
       <input id="home-file-input" type="file" accept="image/jpeg,image/png,image/webp" hidden />
 
       <div class="trust-row">
-        <span>🔒 Stays on this device</span>
+        <span>🔒 Photo stays local</span>
         <span>🙂 Human face required</span>
-        <span>🎭 Entertainment only</span>
+        <span>💳 $9.99 one-time</span>
       </div>
     </section>
 
@@ -89,7 +89,7 @@
 
       <label class="consent-row">
         <input type="checkbox" id="consent" />
-        <span>I agree to process this photo for this demo result. Face detection and geometry measurement run locally in my browser and the photo is not uploaded to our server.</span>
+        <span>I agree to process this photo for my FaceReveal result. Face detection and geometry measurement run locally in my browser and the photo is not uploaded to our server.</span>
       </label>
 
       <button class="cta cta-primary" id="analyze-btn" type="button" disabled>Analyze my face ✨</button>
@@ -116,14 +116,14 @@
       <button class="back-btn" data-back="upload" aria-label="Go back">←</button>
       <div class="eyebrow success">YOUR REVEAL IS READY</div>
       <h2 id="paywall-title">We found your results 👀</h2>
-      <p class="muted">Here’s a preview. Unlock the full reveal below.</p>
+      <p class="muted">Your results are ready. Unlock everything with one secure payment.</p>
 
       <div class="locked-grid">
         <article class="locked-card glass">
-          <small>AI FACE SCORE</small>
+          <small>ENTERTAINMENT FACE SCORE</small>
           <div class="big-score"><span id="paywall-score-leading">8</span>.<span class="digit-lock">?</span><span>/10</span></div>
           <div class="meter"><i style="width:87%"></i></div>
-          <p>Entertainment-based photo score</p>
+          <p>Your full score is locked</p>
         </article>
 
         <article class="locked-card glass twin-card">
@@ -132,29 +132,28 @@
             <div class="mystery-face">?</div>
             <div class="match-badge"><span>?</span><span id="paywall-match-last">4</span>% match</div>
           </div>
-          <strong>Matches hidden</strong>
-          <p>Unlock to reveal your closest facial-structure candidates</p>
+          <strong>Top matches hidden</strong>
+          <p>Unlock your closest facial-structure candidates</p>
         </article>
       </div>
 
       <div class="feature-peek glass-soft">
-        <div><span>🎬</span><strong>Top celebrity resemblance</strong><em>Hidden 🔒</em></div>
-        <div><span>📊</span><strong>Two runner-up matches</strong><em>Hidden 🔒</em></div>
-        <div><span>✨</span><strong>Share card</strong><em>Included</em></div>
+        <div><span>🎬</span><strong>Top celebrity resemblance</strong><em>Locked 🔒</em></div>
+        <div><span>📊</span><strong>Two runner-up matches</strong><em>Locked 🔒</em></div>
+        <div><span>✨</span><strong>Face score + photo insights</strong><em>Included</em></div>
       </div>
 
       <div class="offer-card">
-        <span class="popular">BEST FIRST TEST</span>
-        <div><small>FULL REVEAL</small><strong>$9.99</strong><span>one-time</span></div>
+        <span class="popular">ONE-TIME PURCHASE</span>
+        <div><small>FULL FACEREVEAL</small><strong>$9.99</strong><span>pay once</span></div>
         <ul>
           <li>Full entertainment Face Score</li>
           <li>Top 3 facial-structure resemblance matches</li>
           <li>Photo-style suggestions</li>
-          <li>Shareable result card</li>
+          <li>Shareable result</li>
         </ul>
-        <button class="cta cta-primary" id="checkout-btn" type="button">Unlock my results — $9.99</button>
-        <button class="text-button" id="demo-unlock-btn" type="button">Preview unlocked result — free demo</button>
-        <p class="checkout-note">Demo mode only — this button does not charge you.</p>
+        <button class="cta cta-primary" id="checkout-btn" type="button">Unlock full results — $9.99</button>
+        <p class="checkout-note" id="checkout-note">Secure checkout by Stripe • no subscription • results unlock after payment verification</p>
       </div>
     </section>
 
@@ -172,17 +171,13 @@
 
         <div class="top-match-layout">
           <div class="top-match-person">
-            <div class="match-photo-shell">
-              <img id="result-photo" alt="Your uploaded selfie" />
-            </div>
+            <div class="match-photo-shell"><img id="result-photo" alt="Your uploaded selfie" /></div>
             <span class="match-person-label">You</span>
           </div>
-
           <div class="top-match-center">
             <div class="top-match-percent" id="top-match-percent">—</div>
             <div class="top-match-label">TOP MATCH</div>
           </div>
-
           <div class="top-match-person">
             <div class="match-photo-shell celebrity-shell" id="top-match-photo-shell">
               <div class="match-photo-placeholder">?</div>
@@ -194,39 +189,17 @@
       </section>
 
       <section class="more-matches-section" aria-labelledby="more-matches-title">
-        <div class="section-title-row">
-          <div>
-            <div class="match-kicker">NEXT CLOSEST</div>
-            <h3 id="more-matches-title">2 more matches</h3>
-          </div>
-        </div>
-
+        <div class="section-title-row"><div><div class="match-kicker">NEXT CLOSEST</div><h3 id="more-matches-title">2 more matches</h3></div></div>
         <div class="more-matches-grid">
           <article class="small-match-card glass" id="match-2-card">
-            <div class="small-match-photo">
-              <div class="match-photo-placeholder">?</div>
-              <img id="match-2-photo" alt="Second celebrity resemblance" />
-            </div>
-            <div class="small-match-info">
-              <strong id="match-2-name">Finding match…</strong>
-              <span id="match-2-percent">—</span>
-              <small>#2 resemblance</small>
-            </div>
+            <div class="small-match-photo"><div class="match-photo-placeholder">?</div><img id="match-2-photo" alt="Second celebrity resemblance" /></div>
+            <div class="small-match-info"><strong id="match-2-name">Finding match…</strong><span id="match-2-percent">—</span><small>#2 resemblance</small></div>
           </article>
-
           <article class="small-match-card glass" id="match-3-card">
-            <div class="small-match-photo">
-              <div class="match-photo-placeholder">?</div>
-              <img id="match-3-photo" alt="Third celebrity resemblance" />
-            </div>
-            <div class="small-match-info">
-              <strong id="match-3-name">Finding match…</strong>
-              <span id="match-3-percent">—</span>
-              <small>#3 resemblance</small>
-            </div>
+            <div class="small-match-photo"><div class="match-photo-placeholder">?</div><img id="match-3-photo" alt="Third celebrity resemblance" /></div>
+            <div class="small-match-info"><strong id="match-3-name">Finding match…</strong><span id="match-3-percent">—</span><small>#3 resemblance</small></div>
           </article>
         </div>
-
         <p class="resemblance-note">Percentages compare normalized facial landmark proportions in the available photos. They are approximate resemblance scores, not identity verification.</p>
       </section>
 
@@ -249,16 +222,16 @@
   </main>
 
   <footer class="site-footer">
-    <p>Demo only • no payment • photo stays local</p>
-    <button id="privacy-btn" type="button">Privacy in this demo</button>
+    <p>$9.99 one-time • no subscription • photo stays local</p>
+    <button id="privacy-btn" type="button">Privacy</button>
   </footer>
 
   <dialog class="privacy-dialog" id="privacy-dialog">
     <div class="dialog-card">
       <button class="dialog-close" id="privacy-close" type="button" aria-label="Close privacy information">×</button>
-      <div class="eyebrow">DEMO PRIVACY</div>
+      <div class="eyebrow">PRIVACY</div>
       <h2>Your photo stays local.</h2>
-      <p>This prototype verifies one clear face and measures normalized facial landmark geometry in your browser. Your selfie is not uploaded to our server.</p>
+      <p>FaceReveal verifies one clear face and measures normalized facial landmark geometry in your browser. Your selfie is not uploaded to our server.</p>
       <p>The app does not infer gender from the selfie. You choose which candidate group to compare against. The output is approximate resemblance analysis, not real-person identification or identity verification.</p>
     </div>
   </dialog>
