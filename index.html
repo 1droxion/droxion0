@@ -28,7 +28,7 @@
       <div class="hero-copy">
         <div class="eyebrow">AI PHOTO REVEAL</div>
         <h1 id="home-title">What does AI<br><span>see in your face?</span></h1>
-        <p>Upload one selfie for a fun photo score, visual-vibe match, and personalized photo insights.</p>
+        <p>Upload one selfie for a fun photo score, celebrity-style vibe matches, and personalized photo insights.</p>
       </div>
 
       <div class="hero-card glass">
@@ -37,7 +37,7 @@
           <div class="result-copy">
             <small>FACE SCORE</small>
             <strong>8.<span class="blurred-text">7</span><span class="lock-mini">🔒</span></strong>
-            <p>Your match is waiting 👀</p>
+            <p>Your celebrity-style matches are waiting 👀</p>
           </div>
           <div class="match-orb" aria-hidden="true">?</div>
         </div>
@@ -51,18 +51,13 @@
         <span>🙂 Human face required</span>
         <span>🎭 Entertainment only</span>
       </div>
-
-      <div class="social-proof">
-        <span class="proof-avatars"><i>👩🏽</i><i>👨🏻</i><i>👩🏼</i></span>
-        <span>Built for fast, shareable results.</span>
-      </div>
     </section>
 
     <section class="screen" id="screen-upload" aria-labelledby="upload-title">
       <button class="back-btn" data-back="home" aria-label="Go back">←</button>
       <div class="step-label">STEP 1 OF 2</div>
       <h2 id="upload-title">Choose a clear selfie</h2>
-      <p class="muted">One person, face visible, good lighting. We now verify that a real human face is present before continuing.</p>
+      <p class="muted">One person, face visible, good lighting. We verify that one clear human face is present before continuing.</p>
 
       <label class="upload-zone glass" id="upload-zone" for="file-input">
         <div class="upload-preview-wrap">
@@ -82,13 +77,23 @@
         <div><span>✓</span> Use natural lighting</div>
       </div>
 
+      <fieldset class="match-filter glass-soft">
+        <legend>Show celebrity-style inspirations from</legend>
+        <p>Choose this yourself — the app does not infer gender from your face.</p>
+        <div class="match-filter-options">
+          <label><input type="radio" name="celebrity-category" value="women" /><span>Women</span></label>
+          <label><input type="radio" name="celebrity-category" value="men" /><span>Men</span></label>
+          <label><input type="radio" name="celebrity-category" value="all" checked /><span>All</span></label>
+        </div>
+      </fieldset>
+
       <label class="consent-row">
         <input type="checkbox" id="consent" />
-        <span>I agree to process this photo for this demo result. In this demo, face detection runs locally in my browser and the photo is not uploaded to a server.</span>
+        <span>I agree to process this photo for this demo result. Face detection runs locally in my browser and the photo is not uploaded to our server.</span>
       </label>
 
       <button class="cta cta-primary" id="analyze-btn" type="button" disabled>Analyze my face ✨</button>
-      <p class="fineprint">No face, multiple faces, or a face that is too small/unclear will be rejected. We do not claim attractiveness is objective or scientifically measurable.</p>
+      <p class="fineprint">No face, multiple faces, or a face that is too small/unclear will be rejected. Celebrity percentages below are entertainment-style scores, not biometric identification.</p>
     </section>
 
     <section class="screen" id="screen-scan" aria-labelledby="scan-title">
@@ -122,19 +127,19 @@
         </article>
 
         <article class="locked-card glass twin-card">
-          <small>VISUAL-VIBE TWIN</small>
+          <small>CELEBRITY-STYLE VIBE</small>
           <div class="twin-placeholder">
             <div class="mystery-face">?</div>
-            <div class="match-badge"><span>?</span><span id="paywall-match-last">4</span>% match</div>
+            <div class="match-badge"><span>?</span><span id="paywall-match-last">4</span>% vibe</div>
           </div>
-          <strong>Identity hidden</strong>
+          <strong>Matches hidden</strong>
           <p>Unlock to reveal your full demo result</p>
         </article>
       </div>
 
       <div class="feature-peek glass-soft">
-        <div><span>👁</span><strong>Strongest feature</strong><em>Hidden 🔒</em></div>
-        <div><span>📸</span><strong>Photo style</strong><em>Hidden 🔒</em></div>
+        <div><span>🎬</span><strong>Celebrity-style cards</strong><em>Hidden 🔒</em></div>
+        <div><span>📊</span><strong>Vibe percentages</strong><em>Hidden 🔒</em></div>
         <div><span>✨</span><strong>Share card</strong><em>Included</em></div>
       </div>
 
@@ -143,8 +148,8 @@
         <div><small>FULL REVEAL</small><strong>$9.99</strong><span>one-time</span></div>
         <ul>
           <li>Full entertainment Face Score</li>
-          <li>Visual-vibe twin reveal</li>
-          <li>Feature + photo-style suggestions</li>
+          <li>Celebrity-style inspiration cards</li>
+          <li>Photo-style suggestions</li>
           <li>Shareable result card</li>
         </ul>
         <button class="cta cta-primary" id="checkout-btn" type="button">Unlock my results — $9.99</button>
@@ -157,22 +162,26 @@
       <div class="result-header">
         <div class="eyebrow success">FULL REVEAL</div>
         <h2 id="result-title">Your FaceReveal</h2>
-        <p class="muted">Demo output — not a biometric identification.</p>
+        <p class="muted">Entertainment demo. We do not identify who you are or claim you are the same person as anyone shown.</p>
       </div>
 
-      <article class="score-card glass result-card">
-        <img id="result-photo" alt="Your uploaded selfie" />
-        <div class="score-overlay"><small>ENTERTAINMENT SCORE</small><strong id="demo-score">8.7</strong><span>/10</span></div>
-      </article>
-
-      <article class="match-card glass result-card">
-        <div class="match-head"><small>VISUAL-VIBE TWIN</small><span id="demo-match">84% visual vibe</span></div>
-        <div class="twin-result">
-          <img id="result-photo-small" alt="Your uploaded selfie" />
-          <div class="connector">≈</div>
-          <div class="fictional-twin"><div class="fictional-avatar">★</div><strong id="twin-label">Hollywood Lead</strong><small>Demo archetype</small></div>
+      <section class="celebrity-library" aria-labelledby="celebrity-library-title">
+        <div class="celebrity-library-head">
+          <div>
+            <div class="match-kicker">YOUR CELEBRITY-STYLE RESULTS</div>
+            <h3 id="celebrity-library-title">Your vibe inspirations</h3>
+            <p id="celebrity-filter-label">Showing a curated mix of public figures.</p>
+          </div>
         </div>
-        <p class="legal-note">This demo does not identify a real person or perform biometric face recognition. A production celebrity-match feature would need a separately reviewed implementation.</p>
+        <p class="celebrity-status" id="celebrity-status">Loading your entertainment matches…</p>
+        <div class="celebrity-grid" id="celebrity-grid" aria-live="polite"></div>
+        <button class="load-another" id="celebrity-refresh-btn" type="button">Show another set</button>
+        <p class="celebrity-library-note">Percentages are deterministic entertainment “vibe” scores for the demo and are not biometric similarity measurements. Prototype images come from Wikipedia/Wikimedia.</p>
+      </section>
+
+      <article class="score-card glass result-card score-after-matches">
+        <img id="result-photo" alt="Your uploaded selfie" />
+        <div class="score-overlay"><small>ENTERTAINMENT FACE SCORE</small><strong id="demo-score">8.7</strong><span>/10</span></div>
       </article>
 
       <article class="insights-card glass-soft">
@@ -181,22 +190,6 @@
         <div class="insight-row"><span>Suggested photo style</span><strong id="photo-style">Natural light portrait</strong></div>
         <div class="insight-row"><span>Face framing</span><strong id="face-frame">Centered close-up</strong></div>
       </article>
-
-      <section class="celebrity-library" aria-labelledby="celebrity-library-title">
-        <div class="celebrity-library-head">
-          <div>
-            <h3 id="celebrity-library-title">Celebrity image library</h3>
-            <p>Featured public figures from around the world. Search any celebrity by name.</p>
-          </div>
-        </div>
-        <div class="celebrity-search-row">
-          <input id="celebrity-search" type="search" placeholder="Search celebrity name…" autocomplete="off" />
-          <button id="celebrity-search-btn" type="button">Search</button>
-        </div>
-        <p class="celebrity-status" id="celebrity-status">Loading celebrity images…</p>
-        <div class="celebrity-grid" id="celebrity-grid" aria-live="polite"></div>
-        <p class="celebrity-library-note">Prototype image source: Wikipedia/Wikimedia. This gallery is for browsing only and is not claiming that you look like any person shown. Production use should review image licensing and attribution requirements.</p>
-      </section>
 
       <div class="share-card" id="share-card">
         <div class="share-brand">FaceReveal</div>
@@ -219,8 +212,8 @@
       <button class="dialog-close" id="privacy-close" type="button" aria-label="Close privacy information">×</button>
       <div class="eyebrow">DEMO PRIVACY</div>
       <h2>Your photo stays local.</h2>
-      <p>This prototype uses a temporary browser object URL to preview your image and a client-side face detector to verify that exactly one clear human face is present. The photo itself is not uploaded to our server or to the model CDN.</p>
-      <p>The detector library/model files are downloaded from jsDelivr. The displayed Face Score and visual-vibe result are still deterministic demo values so you can test the customer journey without being misled.</p>
+      <p>This prototype uses a temporary browser object URL to preview your image and a client-side detector to verify that exactly one clear human face is present. The photo itself is not uploaded to our server.</p>
+      <p>The app does not infer gender from the selfie. You choose which celebrity category you want to browse. Celebrity-style percentages are entertainment values, not biometric identification or real-person recognition.</p>
     </div>
   </dialog>
 
