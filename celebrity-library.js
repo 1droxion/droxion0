@@ -5,13 +5,6 @@
   };
 
   const API = 'https://en.wikipedia.org/w/api.php';
-  const grid = document.getElementById('celebrity-grid');
-  const status = document.getElementById('celebrity-status');
-  const label = document.getElementById('celebrity-filter-label');
-  const refresh = document.getElementById('celebrity-refresh-btn');
-  if (!grid || !status || !label || !refresh) return;
-
-  let offset = 0;
   let requestId = 0;
 
   function selectedCategory() {
@@ -24,199 +17,180 @@
     return [...GROUPS.women, ...GROUPS.men];
   }
 
-  function initials(name) {
-    return name.split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase();
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
   }
 
-  function placeholderPercent(name, rank) {
-    const source = `${name}|${window.FaceRevealResultSeed || 0}|${rank}`;
-    let hash = 0;
-    for (let i = 0; i < source.length; i += 1) hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
-    return 60 + (Math.abs(hash) % 18);
+  function clearImage(id) {
+    const img = document.getElementById(id);
+    if (!img) return;
+    img.removeAttribute('src');
+    img.classList.remove('loaded');
   }
 
-  function makeCard(name, rank) {
-    const article = document.createElement('article');
-    article.className = 'celebrity-card celebrity-match-card';
-    article.dataset.name = name;
-    article.dataset.rank = String(rank);
-    article.dataset.similarity = '0';
-
-    const media = document.createElement('div');
-    media.className = 'celebrity-media';
-    const fallback = document.createElement('div');
-    fallback.className = 'celebrity-fallback';
-    fallback.textContent = initials(name);
-    media.appendChild(fallback);
-
-    const body = document.createElement('div');
-    body.className = 'celebrity-match-body';
-    const top = document.createElement('div');
-    top.className = 'celebrity-match-top';
-    const title = document.createElement('strong');
-    title.textContent = name;
-    const pct = document.createElement('span');
-    pct.className = 'celebrity-percent';
-    pct.textContent = `${placeholderPercent(name, rank)}%`;
-    top.append(title, pct);
-
-    const sub = document.createElement('small');
-    sub.className = 'celebrity-sub';
-    sub.textContent = 'measuring facial resemblance…';
-    body.append(top, sub);
-    article.append(media, body);
-    return article;
-  }
-
-  function renderInstant(names) {
-    grid.replaceChildren();
-    names.forEach((name, index) => grid.appendChild(makeCard(name, index)));
-    status.textContent = `${names.length} candidates ready • measuring resemblance…`;
-  }
-
-  function sortCards() {
-    const cards = [...grid.querySelectorAll('.celebrity-match-card')];
-    cards.sort((a, b) => Number(b.dataset.similarity || 0) - Number(a.dataset.similarity || 0));
-    cards.forEach((card) => grid.appendChild(card));
-  }
-
-  async function analyzeCelebrityCard(card, src, thisRequest) {
-    const media = card.querySelector('.celebrity-media');
-    const pct = card.querySelector('.celebrity-percent');
-    const sub = card.querySelector('.celebrity-sub');
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+  function setImage(id, src) {
+    const img = document.getElementById(id);
+    if (!img) return;
+    img.classList.remove('loaded');
+    img.onload = () => img.classList.add('loaded');
+    img.onerror = () => img.classList.remove('loaded');
     img.referrerPolicy = 'no-referrer';
-    img.decoding = 'async';
-    img.loading = 'eager';
-    img.alt = `${card.dataset.name} portrait`;
+    img.src = src;
+  }
 
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = src;
+  function resetResultSlots() {
+    setText('match-status', 'Finding your closest match…');
+    setText('top-match-percent', '—');
+    setText('top-match-name', 'Finding match…');
+    setText('match-2-name', 'Finding match…');
+    setText('match-2-percent', '—');
+    setText('match-3-name', 'Finding match…');
+    setText('match-3-percent', '—');
+    clearImage('top-match-photo');
+    clearImage('match-2-photo');
+    clearImage('match-3-photo');
+  }
+
+  async function fetchCelebrityPhotos(names, signal) {
+    const params = new URLSearchParams({
+      origin: '*',
+      action: 'query',
+      format: 'json',
+      redirects: '1',
+      prop: 'pageimages',
+      piprop: 'thumbnail',
+      pithumbsize: '640',
+      titles: names.join('|')
     });
 
-    if (thisRequest !== requestId) return false;
-    media.replaceChildren(img);
+    const response = await fetch(`${API}?${params.toString()}`, {
+      signal,
+      cache: 'force-cache'
+    });
+    if (!response.ok) throw new Error('Celebrity photo lookup failed');
+
+    const data = await response.json();
+    const pages = Object.values(data?.query?.pages || {})
+      .filter((page) => !page.missing && page.thumbnail?.source);
+
+    return pages.map((page) => ({
+      name: page.title,
+      photo: page.thumbnail.source
+    }));
+  }
+
+  function loadImage(src, timeoutMs = 4500) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Image timeout'));
+      }, timeoutMs);
+
+      const cleanup = () => clearTimeout(timer);
+      img.crossOrigin = 'anonymous';
+      img.referrerPolicy = 'no-referrer';
+      img.decoding = 'async';
+      img.onload = () => { cleanup(); resolve(img); };
+      img.onerror = () => { cleanup(); reject(new Error('Image load failed')); };
+      img.src = src;
+    });
+  }
+
+  async function comparePerson(person, api, userGeometry) {
+    try {
+      const img = await loadImage(person.photo);
+      const geometry = await api.analyzeGeometry(img);
+      if (!geometry) return null;
+      const similarity = api.geometrySimilarity(userGeometry, geometry);
+      if (!Number.isFinite(similarity)) return null;
+      return { ...person, percent: similarity };
+    } catch (error) {
+      console.warn('Celebrity compare failed', person.name, error);
+      return null;
+    }
+  }
+
+  function fillSlot(rank, result) {
+    if (!result) return;
+
+    if (rank === 1) {
+      setText('top-match-name', result.name);
+      setText('top-match-percent', `${result.percent}%`);
+      setImage('top-match-photo', result.photo);
+      return;
+    }
+
+    setText(`match-${rank}-name`, result.name);
+    setText(`match-${rank}-percent`, `${result.percent}%`);
+    setImage(`match-${rank}-photo`, result.photo);
+  }
+
+  async function loadTopMatches() {
+    const thisRequest = ++requestId;
+    resetResultSlots();
 
     const api = window.FaceRevealFaceGate;
     const userGeometry = window.FaceRevealUserGeometry;
     if (!api?.analyzeGeometry || !api?.geometrySimilarity || !userGeometry) {
-      sub.textContent = 'portrait loaded';
-      return false;
+      setText('match-status', 'Face measurements unavailable. Try the scan again.');
+      return;
     }
 
-    try {
-      const celebrityGeometry = await api.analyzeGeometry(img);
-      if (!celebrityGeometry || thisRequest !== requestId) {
-        sub.textContent = 'portrait loaded';
-        return false;
-      }
+    const category = selectedCategory();
+    const names = namesForCategory(category);
+    setText('match-status', `Comparing ${names.length} celebrity portraits…`);
 
-      const similarity = api.geometrySimilarity(userGeometry, celebrityGeometry);
-      if (!Number.isFinite(similarity)) {
-        sub.textContent = 'portrait loaded';
-        return false;
-      }
-
-      card.dataset.similarity = String(similarity);
-      pct.textContent = `${similarity}%`;
-      sub.textContent = 'facial-structure resemblance';
-      return true;
-    } catch (error) {
-      console.warn('Celebrity face analysis failed', card.dataset.name, error);
-      sub.textContent = 'portrait loaded';
-      return false;
-    }
-  }
-
-  async function upgradeImagesAndRank(names) {
-    const thisRequest = ++requestId;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), 7000);
 
     try {
-      const params = new URLSearchParams({
-        origin: '*',
-        action: 'query',
-        format: 'json',
-        redirects: '1',
-        prop: 'pageimages',
-        piprop: 'thumbnail',
-        pithumbsize: '640',
-        titles: names.join('|')
-      });
+      const people = await fetchCelebrityPhotos(names, controller.signal);
+      if (thisRequest !== requestId) return;
 
-      const response = await fetch(`${API}?${params.toString()}`, { signal: controller.signal, cache: 'force-cache' });
-      if (!response.ok || thisRequest !== requestId) return;
+      setText('match-status', `Measuring ${people.length} available portraits…`);
 
-      const data = await response.json();
-      const pages = Object.values(data?.query?.pages || {}).filter((p) => !p.missing && p.thumbnail?.source);
-      const byTitle = new Map(pages.map((p) => [p.title, p.thumbnail.source]));
-      const cards = [...grid.querySelectorAll('.celebrity-match-card')];
+      const settled = await Promise.allSettled(
+        people.map((person) => comparePerson(person, api, userGeometry))
+      );
 
-      let completed = 0;
-      let measured = 0;
-      status.textContent = `${names.length} candidates • comparing facial structure…`;
+      if (thisRequest !== requestId) return;
 
-      await Promise.allSettled(cards.map(async (card) => {
-        const src = byTitle.get(card.dataset.name);
-        if (!src) {
-          completed += 1;
-          return;
-        }
-        const ok = await analyzeCelebrityCard(card, src, thisRequest);
-        if (ok) measured += 1;
-        completed += 1;
-        if (thisRequest === requestId) {
-          sortCards();
-          status.textContent = measured
-            ? `${measured} measured • ranking closest facial structures…`
-            : `${completed}/${names.length} portraits loaded`;
-        }
-      }));
+      const results = settled
+        .map((entry) => entry.status === 'fulfilled' ? entry.value : null)
+        .filter(Boolean)
+        .sort((a, b) => b.percent - a.percent)
+        .slice(0, 3);
 
-      if (thisRequest === requestId) {
-        sortCards();
-        status.textContent = measured
-          ? `${measured} facial resemblance scores measured`
-          : `${names.length} results ready`;
+      if (!results.length) {
+        setText('match-status', 'Could not measure celebrity portraits. Try again.');
+        return;
       }
+
+      fillSlot(1, results[0]);
+      fillSlot(2, results[1]);
+      fillSlot(3, results[2]);
+
+      setText('match-status', results.length >= 3
+        ? 'Top 3 resemblance matches ready'
+        : `${results.length} measured match${results.length === 1 ? '' : 'es'} ready`);
     } catch (error) {
-      if (error?.name !== 'AbortError') console.warn('Celebrity portrait lookup failed', error);
-      if (thisRequest === requestId) status.textContent = `${names.length} results ready`;
+      if (error?.name !== 'AbortError') console.warn('Top match lookup failed', error);
+      if (thisRequest === requestId) {
+        setText('match-status', 'Could not finish the comparison. Try again.');
+      }
     } finally {
       clearTimeout(timer);
     }
   }
 
-  function loadSet() {
-    const category = selectedCategory();
-    const allNames = namesForCategory(category);
-    const pageSize = 6;
-    const names = Array.from({ length: Math.min(pageSize, allNames.length) }, (_, i) => allNames[(offset + i) % allNames.length]);
-
-    label.textContent = category === 'women'
-      ? 'Comparing your facial structure with women celebrity portraits you selected.'
-      : category === 'men'
-        ? 'Comparing your facial structure with men celebrity portraits you selected.'
-        : 'Comparing your facial structure with a mixed celebrity set.';
-
-    renderInstant(names);
-    refresh.disabled = false;
-    upgradeImagesAndRank(names);
-  }
-
-  refresh.addEventListener('click', () => {
-    offset += 6;
-    loadSet();
-  });
-
   document.querySelectorAll('input[name="celebrity-category"]').forEach((radio) => {
-    radio.addEventListener('change', () => { offset = 0; });
+    radio.addEventListener('change', () => {
+      requestId += 1;
+      resetResultSlots();
+    });
   });
 
-  window.FaceRevealCelebrityMatches = { loadSet };
+  window.FaceRevealCelebrityMatches = { loadSet: loadTopMatches };
 })();
