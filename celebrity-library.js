@@ -12,6 +12,7 @@
   if (!grid || !status || !label || !refresh) return;
 
   let offset = 0;
+  let requestId = 0;
 
   function selectedCategory() {
     return document.querySelector('input[name="celebrity-category"]:checked')?.value || 'all';
@@ -66,34 +67,66 @@
   function renderInstant(names) {
     grid.replaceChildren();
     names.forEach((name, index) => grid.appendChild(makeCard(name, index)));
-    status.textContent = `${names.length} results ready`;
+    status.textContent = `${names.length} results ready • loading portraits…`;
   }
 
   async function upgradeImages(names) {
+    const thisRequest = ++requestId;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1600);
+    const timer = setTimeout(() => controller.abort(), 5000);
+
     try {
       const params = new URLSearchParams({
-        origin: '*', action: 'query', format: 'json', redirects: '1', prop: 'pageimages', piprop: 'thumbnail', pithumbsize: '500', titles: names.join('|')
+        origin: '*',
+        action: 'query',
+        format: 'json',
+        redirects: '1',
+        prop: 'pageimages',
+        piprop: 'thumbnail',
+        pithumbsize: '640',
+        titles: names.join('|')
       });
-      const response = await fetch(`${API}?${params.toString()}`, { signal: controller.signal });
-      if (!response.ok) return;
+
+      const response = await fetch(`${API}?${params.toString()}`, { signal: controller.signal, cache: 'force-cache' });
+      if (!response.ok || thisRequest !== requestId) return;
+
       const data = await response.json();
       const pages = Object.values(data?.query?.pages || {}).filter((p) => !p.missing && p.thumbnail?.source);
       const byTitle = new Map(pages.map((p) => [p.title, p.thumbnail.source]));
+      let loaded = 0;
+
       grid.querySelectorAll('.celebrity-match-card').forEach((card) => {
         const src = byTitle.get(card.dataset.name);
         if (!src) return;
+
         const media = card.querySelector('.celebrity-media');
         const img = new Image();
-        img.loading = 'lazy';
+        img.loading = 'eager';
         img.decoding = 'async';
         img.alt = `${card.dataset.name} portrait`;
-        img.onload = () => media.replaceChildren(img);
+        img.referrerPolicy = 'no-referrer';
+
+        img.onload = () => {
+          if (thisRequest !== requestId) return;
+          media.replaceChildren(img);
+          loaded += 1;
+          status.textContent = loaded === names.length
+            ? `${names.length} celebrity portraits ready`
+            : `${names.length} results ready • ${loaded} portraits loaded`;
+        };
+
+        img.onerror = () => {
+          console.warn('Celebrity portrait failed to load', card.dataset.name, src);
+        };
+
+        // Important: eager loading allows detached images to start downloading.
+        // With lazy loading, some browsers never fired onload because the image
+        // was not inserted until after onload.
         img.src = src;
       });
     } catch (error) {
-      if (error?.name !== 'AbortError') console.warn(error);
+      if (error?.name !== 'AbortError') console.warn('Celebrity portrait lookup failed', error);
+      if (thisRequest === requestId) status.textContent = `${names.length} results ready`;
     } finally {
       clearTimeout(timer);
     }
