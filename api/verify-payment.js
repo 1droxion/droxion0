@@ -1,8 +1,9 @@
 const crypto = require('crypto');
 
+const EXPECTED_PAYMENT_LINK_ID = 'plink_1UCswAEDfCCl7PueJG9W2Yj9';
+const EXPECTED_PRICE_ID = 'price_1UCsuREDfCCl7Puewciwlkpv';
 const EXPECTED_AMOUNT = 299;
 const EXPECTED_CURRENCY = 'usd';
-const EXPECTED_OFFER = 'full_reveal_299';
 const ACCESS_COOKIE = 'facereveal_access';
 const ACCESS_SECONDS = 60 * 60 * 24 * 400;
 
@@ -59,6 +60,7 @@ module.exports = async function handler(req, res) {
     const lineItems = session?.line_items?.data || [];
     const expectedLineItem = lineItems.some((item) =>
       item?.quantity === 1 &&
+      item?.price?.id === EXPECTED_PRICE_ID &&
       item?.price?.unit_amount === EXPECTED_AMOUNT &&
       item?.price?.currency === EXPECTED_CURRENCY
     );
@@ -68,9 +70,9 @@ module.exports = async function handler(req, res) {
       session?.mode === 'payment' &&
       session?.status === 'complete' &&
       session?.payment_status === 'paid' &&
+      session?.payment_link === EXPECTED_PAYMENT_LINK_ID &&
       session?.currency === EXPECTED_CURRENCY &&
       session?.amount_total === EXPECTED_AMOUNT &&
-      session?.metadata?.facereveal_offer === EXPECTED_OFFER &&
       expectedLineItem;
 
     if (!paid) {
