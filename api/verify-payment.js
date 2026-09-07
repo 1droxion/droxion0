@@ -1,9 +1,8 @@
 const crypto = require('crypto');
 
-const EXPECTED_PAYMENT_LINK_ID = 'plink_1UCP0ZEDfCCl7PueZK6csmHR';
-const EXPECTED_PRICE_ID = 'price_1UCOnIEDfCCl7PuejRdiW3tv';
-const EXPECTED_AMOUNT = 999;
+const EXPECTED_AMOUNT = 299;
 const EXPECTED_CURRENCY = 'usd';
+const EXPECTED_OFFER = 'full_reveal_299';
 const ACCESS_COOKIE = 'facereveal_access';
 const ACCESS_SECONDS = 60 * 60 * 24 * 400;
 
@@ -58,16 +57,20 @@ module.exports = async function handler(req, res) {
 
     const session = await stripeResponse.json();
     const lineItems = session?.line_items?.data || [];
-    const expectedLineItem = lineItems.some((item) => item?.price?.id === EXPECTED_PRICE_ID && item?.quantity === 1);
+    const expectedLineItem = lineItems.some((item) =>
+      item?.quantity === 1 &&
+      item?.price?.unit_amount === EXPECTED_AMOUNT &&
+      item?.price?.currency === EXPECTED_CURRENCY
+    );
 
     const paid =
       session?.livemode === true &&
       session?.mode === 'payment' &&
       session?.status === 'complete' &&
       session?.payment_status === 'paid' &&
-      session?.payment_link === EXPECTED_PAYMENT_LINK_ID &&
       session?.currency === EXPECTED_CURRENCY &&
       session?.amount_total === EXPECTED_AMOUNT &&
+      session?.metadata?.facereveal_offer === EXPECTED_OFFER &&
       expectedLineItem;
 
     if (!paid) {
