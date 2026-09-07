@@ -1,7 +1,9 @@
 (() => {
   const PIXEL_ID = '1026577833673171';
   const PRODUCT_NAME = 'FaceReveal Full Reveal';
-  const OFFER_ID = 'facereveal_full_reveal_299';
+  const PRICE_ID = 'price_1UCsuREDfCCl7Puewciwlkpv';
+  const PAYMENT_LINK_ID = 'plink_1UCswAEDfCCl7PueJG9W2Yj9';
+  const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/dRm3cvfdtbh0eFB9H57Re01';
   const VALUE = 2.99;
   const CURRENCY = 'USD';
   const PENDING_DB = 'facereveal-pending-v1';
@@ -118,7 +120,7 @@
 
   const checkoutButton = document.getElementById('checkout-btn');
   checkoutButton?.addEventListener('click', async (event) => {
-    // Capture phase prevents the old $9.99 Payment Link handler in app.js.
+    // Capture phase prevents the legacy $9.99 handler in app.js from running.
     event.preventDefault();
     event.stopImmediatePropagation();
 
@@ -135,17 +137,11 @@
         currency: CURRENCY,
         content_name: PRODUCT_NAME,
         content_type: 'product',
-        content_ids: [OFFER_ID],
+        content_ids: [PRICE_ID],
+        payment_link_id: PAYMENT_LINK_ID,
       });
 
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok || !data.url) throw new Error('Could not open secure checkout.');
-
-      window.location.assign(data.url);
+      window.location.assign(STRIPE_CHECKOUT_URL);
     } catch (error) {
       console.error('FaceReveal $2.99 checkout failed', error);
       checkoutButton.disabled = false;
@@ -176,7 +172,8 @@
         currency: CURRENCY,
         content_name: PRODUCT_NAME,
         content_type: 'product',
-        content_ids: [OFFER_ID],
+        content_ids: [PRICE_ID],
+        payment_link_id: PAYMENT_LINK_ID,
       });
 
       try {
