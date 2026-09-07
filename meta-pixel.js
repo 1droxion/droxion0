@@ -9,6 +9,7 @@
   const PENDING_DB = 'facereveal-pending-v1';
   const PENDING_STORE = 'checkout';
   const PENDING_KEY = 'pending-reveal';
+  let selectedFile = null;
 
   // Keep every customer-facing price in sync with the live one-time offer.
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -59,7 +60,9 @@
 
   ['home-file-input', 'file-input'].forEach((id) => {
     document.getElementById(id)?.addEventListener('change', (event) => {
-      if (!event.target?.files?.[0]) return;
+      const file = event.target?.files?.[0] || null;
+      if (!file) return;
+      selectedFile = file;
       trackCustom('SelfieUpload');
     });
   });
@@ -83,13 +86,11 @@
     return document.querySelector('input[name="celebrity-category"]:checked')?.value || 'all';
   }
 
-  async function savePendingRevealFromPreview() {
-    const preview = document.getElementById('upload-preview');
-    if (!preview?.src || !preview.src.startsWith('blob:')) {
+  async function savePendingRevealFromSelectedFile() {
+    if (!selectedFile) {
       throw new Error('Your selfie is missing. Please upload it again.');
     }
 
-    const blob = await fetch(preview.src).then((response) => response.blob());
     const request = indexedDB.open(PENDING_DB, 1);
     const db = await new Promise((resolve, reject) => {
       request.onupgradeneeded = () => {
@@ -101,10 +102,10 @@
     });
 
     const payload = {
-      blob,
-      name: 'facereveal-selfie.jpg',
-      type: blob.type || 'image/jpeg',
-      lastModified: Date.now(),
+      blob: selectedFile,
+      name: selectedFile.name || 'facereveal-selfie.jpg',
+      type: selectedFile.type || 'image/jpeg',
+      lastModified: selectedFile.lastModified || Date.now(),
       category: selectedCategory(),
       createdAt: Date.now(),
     };
@@ -130,7 +131,7 @@
     checkoutButton.textContent = 'Opening secure checkout…';
 
     try {
-      await savePendingRevealFromPreview();
+      await savePendingRevealFromSelectedFile();
 
       trackStandard('InitiateCheckout', {
         value: VALUE,
