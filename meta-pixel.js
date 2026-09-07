@@ -1,9 +1,20 @@
 (() => {
   const PIXEL_ID = '1026577833673171';
   const PRODUCT_NAME = 'FaceReveal Full Reveal';
-  const PRICE_ID = 'price_1UCOnIEDfCCl7PuejRdiW3tv';
-  const VALUE = 9.99;
+  const OFFER_ID = 'facereveal_full_reveal_299';
+  const VALUE = 2.99;
   const CURRENCY = 'USD';
+  const PENDING_DB = 'facereveal-pending-v1';
+  const PENDING_STORE = 'checkout';
+  const PENDING_KEY = 'pending-reveal';
+
+  // Keep every customer-facing price in sync with the live one-time offer.
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  textNodes.forEach((node) => {
+    if (node.nodeValue?.includes('$9.99')) node.nodeValue = node.nodeValue.replaceAll('$9.99', '$2.99');
+  });
 
   // FaceReveal intentionally sends only generic funnel events to Meta.
   // Never send selfie data, facial measurements, scores, celebrity matches,
@@ -66,15 +77,82 @@
     observer.observe(paywall, { attributes: true, attributeFilter: ['class'] });
   }
 
-  document.getElementById('checkout-btn')?.addEventListener('click', () => {
-    trackStandard('InitiateCheckout', {
-      value: VALUE,
-      currency: CURRENCY,
-      content_name: PRODUCT_NAME,
-      content_type: 'product',
-      content_ids: [PRICE_ID],
+  function selectedCategory() {
+    return document.querySelector('input[name="celebrity-category"]:checked')?.value || 'all';
+  }
+
+  async function savePendingRevealFromPreview() {
+    const preview = document.getElementById('upload-preview');
+    if (!preview?.src || !preview.src.startsWith('blob:')) {
+      throw new Error('Your selfie is missing. Please upload it again.');
+    }
+
+    const blob = await fetch(preview.src).then((response) => response.blob());
+    const request = indexedDB.open(PENDING_DB, 1);
+    const db = await new Promise((resolve, reject) => {
+      request.onupgradeneeded = () => {
+        const opened = request.result;
+        if (!opened.objectStoreNames.contains(PENDING_STORE)) opened.createObjectStore(PENDING_STORE);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('Could not open local checkout storage.'));
     });
-  });
+
+    const payload = {
+      blob,
+      name: 'facereveal-selfie.jpg',
+      type: blob.type || 'image/jpeg',
+      lastModified: Date.now(),
+      category: selectedCategory(),
+      createdAt: Date.now(),
+    };
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(PENDING_STORE, 'readwrite');
+      tx.objectStore(PENDING_STORE).put(payload, PENDING_KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error('Could not save selfie before checkout.'));
+    });
+    db.close();
+  }
+
+  const checkoutButton = document.getElementById('checkout-btn');
+  checkoutButton?.addEventListener('click', async (event) => {
+    // Capture phase prevents the old $9.99 Payment Link handler in app.js.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    if (checkoutButton.disabled) return;
+    const oldLabel = checkoutButton.textContent;
+    checkoutButton.disabled = true;
+    checkoutButton.textContent = 'Opening secure checkout…';
+
+    try {
+      await savePendingRevealFromPreview();
+
+      trackStandard('InitiateCheckout', {
+        value: VALUE,
+        currency: CURRENCY,
+        content_name: PRODUCT_NAME,
+        content_type: 'product',
+        content_ids: [OFFER_ID],
+      });
+
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok || !data.url) throw new Error('Could not open secure checkout.');
+
+      window.location.assign(data.url);
+    } catch (error) {
+      console.error('FaceReveal $2.99 checkout failed', error);
+      checkoutButton.disabled = false;
+      checkoutButton.textContent = oldLabel;
+      window.showToast?.(error.message || 'Could not open secure checkout. Please try again.');
+    }
+  }, true);
 
   async function trackVerifiedPurchase() {
     const sessionId = new URLSearchParams(window.location.search).get('session_id');
@@ -98,7 +176,7 @@
         currency: CURRENCY,
         content_name: PRODUCT_NAME,
         content_type: 'product',
-        content_ids: [PRICE_ID],
+        content_ids: [OFFER_ID],
       });
 
       try {
