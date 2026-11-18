@@ -48,6 +48,28 @@ def test_wrong_password_and_cross_origin(client):
     assert client.post("/api/jobs",headers={"Origin":"https://other-site.example"},
                     data={"rights":"true","url":"https://example.com/file.mp4"}).status_code == 403
 
+def test_render_public_login_origin_with_proxy_host(client):
+    """Production browser Origin must work even when reverse proxy rewrites ASGI server."""
+    response=client.post(
+        "/login",
+        data={"password":cloud.SECRET},
+        headers={"Origin":"https://droxionclips-editor-beta.onrender.com",
+                 "Sec-Fetch-Site":"same-origin"},
+        follow_redirects=False
+    )
+    assert response.status_code==303
+    assert response.cookies.get(cloud.COOKIE)
+
+def test_cross_site_login_origin_blocked(client):
+    response=client.post(
+        "/login",data={"password":cloud.SECRET},
+        headers={"Origin":"https://fake-editor.example","Sec-Fetch-Site":"cross-site"},
+        follow_redirects=False
+    )
+    assert response.status_code==403
+    assert not response.cookies.get(cloud.COOKIE)
+
+
 def test_youtube_reference_rejected_without_uploaded_footage(client):
     sign_in(client)
     response=client.post("/api/jobs",data={"rights":"true","url":"https://youtu.be/dQw4w9WgXcQ"})
