@@ -1,0 +1,49 @@
+name: YouTube import staging smoke test
+on:
+  push:
+    branches: [codex/youtube-import-smoke]
+permissions:
+  contents: read
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: projects/d6x8-clips
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install renderer
+        run: |
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          pip install -r requirements.txt
+      - name: Verify media intake and five local exports
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from youtube_import import download_youtube
+          from app import duration_of, audio_energy, motion_energy, select_highlights, render
+          with TemporaryDirectory() as folder:
+              source = Path(folder) / "source.mp4"
+              try:
+                  download_youtube("https://youtu.be/aoX-35oZ14Y", source, 50 * 1024**2, 600)
+              except ValueError as error:
+                  lines = getattr(error.__cause__, "stderr", b"").decode(errors="replace").splitlines()
+                  for line in lines:
+                      if "ERROR:" in line:
+                          print(line.split("https://")[0], flush=True)
+                  raise
+              duration = duration_of(source)
+              assert 12 <= duration <= 600
+              clips = select_highlights(audio_energy(source, duration), motion_energy(source, duration), duration)
+              assert len(clips) == 5
+              for i, clip in enumerate(clips, 1):
+                  output = source.parent / f"clip-{i}.mp4"
+                  render(source, output, clip["start"], clip["end"], "neon", i)
+                  assert duration_of(output) > 0
+              print("Downloaded valid source and verified all five exports.")
+          PY
