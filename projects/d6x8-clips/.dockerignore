@@ -1,0 +1,9 @@
+.venv
+workspace
+public-dist
+__pycache__
+.pytest_cache
+*.pyc
+*.mp4
+*.zip
+.env
