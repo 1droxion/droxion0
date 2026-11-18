@@ -88,6 +88,7 @@ progress{width:100%;accent-color:var(--lime)}
 .platforms span{display:grid;align-content:center;justify-items:center;gap:4px;min-height:55px;border-left:1px solid #ffffff37;font-size:clamp(12px,1.08vw,16px)}
 .platforms i{display:grid;place-items:center;font-weight:bold;font-size:22px;font-style:normal;width:34px;height:31px;border-radius:8px}
 .youtube{background:#fa1010}
+.platforms .youtube::before{content:"";border-style:solid;border-width:7px 0 7px 11px;border-color:transparent transparent transparent white;margin-left:2px}
 .tiktok{background:#151016;text-shadow:-2px 1px cyan,2px -1px #ff307b}
 .instagram{background:linear-gradient(35deg,#ffcb4e,#fa2b74,#762dff)}
 .perks b{font-size:24px;color:var(--lime)}
@@ -127,7 +128,7 @@ footer{padding-block:14px 24px}
   .hero{background:linear-gradient(180deg,#08070af7 0%,#08070a8a 46%,#140c1d 100%),url(hero.webp) 57% center/cover,#160e23}
   .hero-inner{min-height:0;flex-direction:column;align-items:flex-start;padding:22px 3px}
   .phones{width:min(76%,315px);align-self:center;margin-top:8px}
-  .phone b{font-size:clamp(16px,5vw,25px)}
+  .phone b{font-size:clamp(14px,4.6vw,24px)}
   .studio-row,.caption-settings{grid-template-columns:1fr}
   .studio-row .source{grid-column:auto}
   .studio-row{gap:13px}
@@ -135,4 +136,9 @@ footer{padding-block:14px 24px}
   .scrollrow{grid-auto-columns:minmax(190px,75%)}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
-@media(max-width:360px){h1{font-size:36px}}
+@media(max-width:360px){
+  h1{font-size:36px}
+  .logo{font-size:19px}
+  .top-inner{gap:6px}
+  .top-cta{padding-inline:.65em}
+}
