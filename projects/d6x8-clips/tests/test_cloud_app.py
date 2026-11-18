@@ -59,8 +59,8 @@ def test_youtube_reference_rejected_without_uploaded_footage(client):
 def test_consent_font_and_missing_video(client):
     sign_in(client)
     assert client.post("/api/jobs",data={"url":"https://youtu.be/dQw4w9WgXcQ"}).status_code==400
-    assert client.post("/api/jobs",data={"rights":"true","caption_font":"notreal",
-                    "video":"none"}).status_code==400
+    assert client.post("/api/jobs",data={"rights":"true","caption_font":"notreal"},
+                    files={"video":("gameplay.mp4",b"not a video","video/mp4")}).status_code==400
     assert client.post("/api/jobs",data={"rights":"true"}).status_code==400
     assert client.post("/api/jobs",data={"rights":"true","url":"https://example.com/youtube"}).status_code==400
 
