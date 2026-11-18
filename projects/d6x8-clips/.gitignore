@@ -9,3 +9,4 @@ workspace/
 *.webm
 *.m4v
 .env
+browser-screenshots/
