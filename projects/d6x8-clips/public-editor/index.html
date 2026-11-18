@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b090e">
+  <meta name="description" content="Create five vertical highlight clips from your gameplay with custom styles and captions.">
+  <title>DroxionClips — Turn Gameplay into Short Clips</title>
+  <link rel="canonical" href="https://droxion.com/">
+  <meta property="og:title" content="DroxionClips — Gaming Highlights">
+  <meta property="og:description" content="Create five vertical gaming clips from an authorized recording. Choose fonts, styles and highlights.">
+  <meta property="og:url" content="https://droxion.com/">
+  <link rel="stylesheet" href="/static/studio.css">
+  <link rel="stylesheet" href="/editor.css">
+  
+</head>
+<body id="home">
+  <svg xmlns="http://www.w3.org/2000/svg" class="symbols" aria-hidden="true">
+    <symbol id="clap" viewBox="0 0 32 32"><path fill="currentColor" d="m2 9 25-7 2 6-5 2-5-3-4 1 5 3-5 1-5-3-4 1 5 3-7 2zm1 8 26-7v17a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path fill="#111" d="m13 17 8 4-8 5z"/></symbol>
+    <symbol id="bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 10-12h-7z"/></symbol>
+    <symbol id="film" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M7 3v18M17 3v18M2 9h5m10 0h5M2 15h5m10 0h5m-12-6 5 3-5 3z"/></symbol>
+    <symbol id="sliders" viewBox="0 0 24 24"><path d="M2 5h10m5 0h5M2 12h4m5 0h11M2 19h12m5 0h3"/><circle cx="14" cy="5" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="19" r="2"/></symbol>
+    <symbol id="bars" viewBox="0 0 24 24"><path d="M3 15h4v7H3zm7-5h4v12h-4zm7-7h4v19h-4z"/></symbol>
+    <symbol id="upload" viewBox="0 0 24 24"><path d="M7 19H5a4 4 0 0 1-1-8 7 7 0 0 1 13-3 5 5 0 0 1 2 11h-2m-5 3V12m-4 4 4-4 4 4"/></symbol>
+  </svg>
+  <header class="top">
+    <div class="shell top-inner">
+      <a class="logo" href="#home" aria-label="DroxionClips home"><svg><use href="#clap"/></svg><span>Droxion<em>Clips</em></span></a>
+      <button class="menu" id="menu" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+      <nav id="nav" aria-label="Main navigation">
+        <a class="home" href="#home">Home</a>
+        <a href="#how">How It Works</a>
+        <a href="#examples">Examples</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <a class="cta top-cta" href="#studio">Get Started</a>
+    </div>
+  </header>
+  <main>
+    <section class="hero" aria-labelledby="headline">
+      <div class="shell hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">Turn your gameplay into</p>
+          <h1 id="headline">Viral Reels<br>&amp; <em>Real Income</em></h1>
+          <p class="intro">Create high-impact gaming clips for Shorts, TikTok, Instagram and Facebook Reels. Grow your audience and explore ways to earn.</p>
+          <ul class="benefits">
+            <li><svg><use href="#bolt"/></svg>Get<br>Highlights</li>
+            <li><svg><use href="#film"/></svg>Add<br>Captions</li>
+            <li><svg><use href="#sliders"/></svg>Apply<br>Pro Styles</li>
+            <li><svg><use href="#bars"/></svg>Post &amp;<br>Grow</li>
+          </ul>
+        </div>
+        <div class="phones" aria-label="Illustrated gaming clip examples">
+          <figure class="phone phone-clutch"><b>1 VS 4 <em>CLUTCH!</em></b></figure>
+          <figure class="phone phone-chase"><b>INSANE <em>CHASE!</em></b></figure>
+          <figure class="phone phone-win"><b>VICTORY <em>ROUND!</em></b></figure>
+        </div>
+      </div>
+    </section>
+    <div class="shell content">
+      
+<section id="studio" class="studio public-studio" aria-labelledby="editor-title">
+  <div class="public-beta-card paste-editor">
+    <div class="beta-brow">DroxionClips · Create your clips</div>
+    <h2 id="editor-title">Paste your video link. Get 5 clips.</h2>
+    <p>Paste a direct HTTPS MP4/MOV file link or upload your recording. Create five vertical highlights, each 30–35 seconds for recordings of 2:30 or longer. Preview all five highlights and download only the ones you like.</p>
+    <form id="clipForm" class="clip-form">
+      <label class="editor-label" for="sourceUrl">Video link</label>
+      <div class="paste-row">
+        <input id="sourceUrl" type="url" inputmode="url" placeholder="Paste a direct video file link" autocomplete="off">
+        <button type="submit" id="startClipping" class="cta">Create 5 Clips →</button>
+      </div>
+      <div class="source-options">
+        <label for="videoFile" class="file-cta">Or upload an MP4 recording</label>
+        <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm">
+        <span id="fileName">No video selected</span>
+      </div>
+      <p id="sourceHelp" class="source-help">Paste a direct HTTPS MP4/MOV link or upload a recording.</p>
+      <div class="clip-options">
+        <label>Clip style
+          <select id="clipStyle"><option value="neon">Neon Rush</option><option value="electric">Electric</option><option value="fire">Fire Mode</option><option value="royal">Royal</option><option value="clean">Clean Cut</option></select>
+        </label>
+        <label class="inline-caption" for="captionsOn"><input type="checkbox" id="captionsOn"> Add manual caption</label>
+        <label>Font
+          <select id="clipFont"><option value="bebasneue">Bebas Neue</option><option value="montserrat">Montserrat</option><option value="poppins">Poppins</option><option value="oswald">Oswald</option><option value="anton">Anton</option></select>
+        </label>
+        <label id="captionTextWrap" hidden>Caption text
+          <input id="captionText" maxlength="65" placeholder="YOUR BEST CLUTCH!">
+        </label>
+      </div>
+      <label class="rights-row"><input id="rightsCheck" type="checkbox" required> I own or have permission to edit this recording.</label>
+      <p class="small-note">Free limited trial · 1 GiB maximum · Up to 3 hours per recording · No login required · One render at a time · Clips expire automatically</p>
+    </form>
+    <div id="editorStatus" class="editor-status" role="status" aria-live="polite" hidden>
+      <p id="statusText">Preparing your clips…</p><progress id="clipProgress" max="100" value="0"></progress>
+    </div>
+    <section id="clipResults" class="clip-results" hidden aria-labelledby="clipResultsTitle">
+      <h3 id="clipResultsTitle">Your 5 clips are ready</h3>
+      <div id="clipCards" class="clip-cards"></div>
+      <div class="download-actions">
+        <button id="selectAllClips" type="button" class="beta-secondary">Select all 5</button>
+        <button id="downloadSelected" type="button" class="cta">Download selected clips</button>
+        <span id="selectedCount">5 selected</span>
+      </div>
+    </section>
+  </div>
+</section>
+<section class="platforms" aria-label="Platforms and studio features">
+        <strong>Create for<br>All Platforms</strong>
+        <span><i class="youtube" aria-hidden="true"></i>Shorts</span>
+        <span><i class="tiktok" aria-hidden="true">♪</i>TikTok</span>
+        <span><i class="instagram" aria-hidden="true">◎</i>Reels</span>
+        <span><i class="youtube" aria-hidden="true"></i>YouTube</span>
+        <span class="perks"><b>5</b>Highlight exports</span>
+        <span class="perks"><b>Aa</b>Caption controls</span>
+        <span class="perks"><b>⌂</b>Local processing</span>
+      </section>
+      <section id="examples" class="examples" aria-label="Creator use cases">
+        <div class="scrollrow" tabindex="0">
+          <article><span aria-hidden="true"><svg class="icon"><use href="#bolt"/></svg></span><div><h2>Share the clutch</h2><p>Turn a comeback into a short worth replaying.</p></div></article>
+          <article><span aria-hidden="true">✦</span><div><h2>Build a series</h2><p>Post a recurring highlight from each stream.</p></div></article>
+          <article><span aria-hidden="true">▷</span><div><h2>Grow your channel</h2><p>Give short-form viewers a way to find your full stream.</p></div></article>
+          <article><span aria-hidden="true">◈</span><div><h2>Find your style</h2><p>Make clips recognizable with a consistent look.</p></div></article>
+          <article><span aria-hidden="true">↗︎</span><div><h2>Explore monetization</h2><p>Eligible creators can apply for platform programs.</p></div></article>
+        </div>
+      </section>
+      <section id="how" class="info">
+        <h2>How It Works</h2>
+        <ol><li>Upload gameplay you own or have permission to use.</li><li>Choose a style and optional manual captions.</li><li>Review and download five vertical MP4s selected using audio and motion.</li></ol>
+        <p>Clip selection uses activity in the footage. Audience growth and earnings vary by creator and platform.</p>
+      </section>
+      <section id="pricing" class="info pricing">
+        <div><h2>DroxionClips Pro</h2><p>Try five 9:16 exports, original styles and manual captions in the limited online beta.</p></div>
+        <div><strong>$9.99<small>/month</small></strong><p>Future plan · no payment accepted</p></div>
+      </section>
+    </div>
+  </main>
+  <footer class="shell">© DroxionClips · Early-access creator website · <a href="https://games.droxion.com/">Play FIVE</a></footer>
+<script>
+  const nav=document.getElementById('nav');
+  const menu=document.getElementById('menu');
+  if(nav&&menu){
+    menu.addEventListener('click',()=>{
+      const opened=menu.getAttribute('aria-expanded')!=='true';
+      menu.setAttribute('aria-expanded',String(opened));
+      nav.classList.toggle('open',opened);
+    });
+    nav.addEventListener('click',e=>{
+      if(e.target.closest('a')){menu.setAttribute('aria-expanded','false');nav.classList.remove('open')}
+    });
+  }
+</script><script src="/editor.js" defer></script></body>
+</html>

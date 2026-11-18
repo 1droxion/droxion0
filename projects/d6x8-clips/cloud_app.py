@@ -1,6 +1,6 @@
 """Secure single-operator web beta for DroxionClips.
 
-This intentionally does NOT scrape YouTube or expose the OBS file watcher.
+The online editor does not expose the local OBS file watcher.
 The Render web beta is password protected, runs one short render at a time,
 and deletes uploaded originals after processing.
 """
@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from creator_sources import creator_video_reference
+from youtube_import import HIGHLIGHT_COUNT, MAX_CLIP_SECONDS, MIN_SOURCE_SECONDS, download_youtube
 from app import (
     HERE, THEMES, CAPTION_FONTS, PinnedHTTPSConnection,
     direct_video_address, duration_of, audio_energy, motion_energy,
@@ -36,11 +37,15 @@ from app import (
 SECRET = os.environ.get("DROXIONCLIPS_BETA_PASSWORD", "")
 SESSION_SECRET = os.environ.get("DROXIONCLIPS_SESSION_SECRET", "")
 MAX_BYTES = 120 * 1024 * 1024
-PUBLIC_MAX_BYTES = 50 * 1024 * 1024
-PUBLIC_MAX_DURATION = 300
+PUBLIC_MAX_BYTES = 1024**3
+PUBLIC_YOUTUBE_MAX_BYTES = 50 * 1024 * 1024
+PUBLIC_MAX_DURATION = 3 * 60 * 60
+PUBLIC_YOUTUBE_MAX_DURATION = 600
+PUBLIC_YOUTUBE_ENABLED = os.environ.get("DROXIONCLIPS_YOUTUBE_ENABLED") == "1"
 PUBLIC_DAILY_GLOBAL_CAP = 12
 PUBLIC_DAILY_PER_IP_CAP = 2
-PUBLIC_ORIGINS = ("https://droxion.com", "https://www.droxion.com", "https://clips.droxion.com")
+PUBLIC_ORIGINS = ("https://droxion.com", "https://www.droxion.com", "https://clips.droxion.com",
+                  "https://droxionclips-editor-beta.onrender.com")
 PUBLIC_TRIAL_ENABLED = os.environ.get("DROXIONCLIPS_PUBLIC_TRIAL_ENABLED", "0") == "1"
 MAX_DURATION = 600
 RETENTION = 60 * 60
@@ -163,7 +168,7 @@ def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
     parsed, address = endpoint
     conn = PinnedHTTPSConnection(parsed.hostname, address)
     path = urlunsplit(("", "", parsed.path, parsed.query, ""))
-    deadline = time.monotonic() + 120
+    deadline = time.monotonic() + (1200 if limit == PUBLIC_MAX_BYTES else 120)
     try:
         conn.request("GET", path, headers={"Accept-Encoding": "identity"})
         with conn.getresponse() as response:
@@ -171,7 +176,7 @@ def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
                 raise ValueError("The direct file URL didn't return a video. Upload the file instead.")
             header = response.getheader("Content-Length")
             if header and header.isdecimal() and int(header) > limit:
-                raise ValueError("The video is too large for this beta (120 MB maximum).")
+                raise ValueError("The video exceeds the maximum file size for this editing mode.")
             total = 0
             with target.open("wb") as out:
                 while part := response.read1(256 * 1024):
@@ -190,13 +195,23 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
-        if source_url:
+        youtube = bool(public and source_url and creator_video_reference(source_url))
+        if youtube:
+            update(job_id, progress=8, message="Importing YouTube video")
+            download_youtube(source_url, source, PUBLIC_YOUTUBE_MAX_BYTES, PUBLIC_YOUTUBE_MAX_DURATION)
+        elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
-        if not 12 <= length <= (PUBLIC_MAX_DURATION if public else MAX_DURATION):
-            raise ValueError("Choose a recording between 12 seconds and " + ("5 minutes." if public else "10 minutes."))
+        max_duration = PUBLIC_YOUTUBE_MAX_DURATION if youtube else (PUBLIC_MAX_DURATION if public else MAX_DURATION)
+        if youtube and length < MIN_SOURCE_SECONDS:
+            raise ValueError("Use a video at least 2 minutes 30 seconds long for five 30–35 second clips.")
+        if not 12 <= length <= max_duration:
+            maximum = "3 hours" if max_duration == PUBLIC_MAX_DURATION else f"{max_duration // 60} minutes"
+            raise ValueError(f"Choose a video between 12 seconds and {maximum}.")
         update(job_id, progress=26, message="Measuring motion and audio activity")
-        picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length)
+        seconds = min(MAX_CLIP_SECONDS, int(length // HIGHLIGHT_COUNT)) if public and length >= MIN_SOURCE_SECONDS else None
+        picks = select_highlights(audio_energy(source, length), motion_energy(source, length),
+                                  length, count=HIGHLIGHT_COUNT, clip_seconds=seconds)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
@@ -298,6 +313,19 @@ def logout(request: Request):
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(COOKIE)
     return response
+
+@site.get("/long-clips", response_class=HTMLResponse)
+def long_clips_editor():
+    if not PUBLIC_TRIAL_ENABLED:
+        raise HTTPException(503, "Online clipping is temporarily unavailable.")
+    page = (HERE / "public-editor/index.html").read_text(encoding="utf-8")
+    return page.replace('/editor.js', '/long-clips-assets/editor.js').replace(
+        '/editor.css', '/long-clips-assets/editor.css')
+
+
+site.mount("/long-clips-assets", StaticFiles(directory=HERE / "public-editor"),
+           name="long-clips-assets")
+
 
 @site.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
@@ -478,16 +506,14 @@ async def create_public_job(
         raise HTTPException(400, "Confirm you own or have permission to use the footage.")
     url = (url or "").strip()
     yt = creator_video_reference(url) if url else None
-    if yt and not video:
-        raise HTTPException(
-            400, "YouTube watch/live links cannot be downloaded directly. "
-                 "Download your own recording from YouTube Studio, then upload that MP4."
-        )
+    if yt and not video and not PUBLIC_YOUTUBE_ENABLED:
+        raise HTTPException(400, "Upload your recording or paste a direct HTTPS MP4/MOV file link. YouTube watch links are in beta.")
+    if yt and yt["kind"] == "live" and not video:
+        raise HTTPException(400, "For a finished livestream, paste its YouTube watch link or upload the OBS recording.")
     if not yt and bool(video) == bool(url):
-        raise HTTPException(400, "Paste a direct HTTPS MP4/MOV file link, or upload your video.")
+        raise HTTPException(400, "Paste a YouTube video link, a direct HTTPS MP4/MOV link, or upload your recording.")
     if url and not yt and not direct_video_address(url):
-        raise HTTPException(400, "That is not a direct downloadable MP4/MOV file link. "
-                                 "YouTube watch links require an original recording.")
+        raise HTTPException(400, "Use a YouTube video link or a direct public HTTPS MP4/MOV file link.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
         raise HTTPException(400, "Select a supported clip style and caption font.")
     caption_text = caption_text.strip() if captions else ""
@@ -496,7 +522,7 @@ async def create_public_job(
     if video and not (video.filename or "").lower().endswith((".mp4",".mov",".m4v",".mkv",".webm")):
         raise HTTPException(400, "Supported files: MP4, MOV, M4V, MKV or WebM.")
     if video and video.size is not None and video.size > PUBLIC_MAX_BYTES:
-        raise HTTPException(413, "Maximum online trial file size is 50 MB.")
+        raise HTTPException(413, "Maximum online trial file size is 1 GiB.")
     if not guard.acquire(blocking=False):
         raise HTTPException(409, "One video is processing. Try again shortly.")
     folder = None
@@ -521,7 +547,7 @@ async def create_public_job(
                 while chunk := await video.read(1024*1024):
                     total += len(chunk)
                     if total > PUBLIC_MAX_BYTES:
-                        raise HTTPException(413, "Maximum online trial file size is 50 MB.")
+                        raise HTTPException(413, "Maximum online trial file size is 1 GiB.")
                     output.write(chunk)
             await video.close()
             if total == 0:
@@ -539,7 +565,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if yt else url,True),
+            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True),
         ).start()
         accepted = True
         return {"job_id":job_id}

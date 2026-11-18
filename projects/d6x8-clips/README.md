@@ -70,3 +70,14 @@ The web beta is served by `cloud_app:app` and is **not a public paid service**. 
 - Original recording is deleted when rendering ends. Generated clips are kept temporarily and expire on cleanup; download your clips promptly.
 
 Do **not** move `droxion.com`, `clips.droxion.com` or customer billing to this backend yet. The web beta needs traffic controls, monitoring, durable job storage, scalable queues, and a proper customer authentication system before public launch.
+
+## Public long-recording editor
+
+Open `/long-clips` on the web editor service when the public trial is enabled.
+
+- Upload a recording or paste a direct public HTTPS MP4/M4V/MOV file URL. The limit is three hours and 1 GiB.
+- Recordings of at least 2:30 produce five 30–35 second vertical highlights. Shorter recordings produce shorter clips.
+- Preview clips and download individual MP4s or a ZIP of selected clips.
+- Optional captions burn in the single line and font that you choose. Automatic transcription is separate.
+- YouTube watch links require the experimental `DROXIONCLIPS_YOUTUBE_ENABLED=1` flag and a compatible upstream stream. Keep the flag off when upstream downloads fail.
+- The public queue accepts one active render per process. Existing daily public-trial job limits apply.

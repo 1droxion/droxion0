@@ -95,12 +95,12 @@ def audio_energy(path, duration):
     n = math.ceil(duration)
     try:
         data = cmd(["ffmpeg", "-v", "error", *VIDEO_INPUT, "-i", str(path), "-t", str(duration), "-vn", "-ac", "1",
-                    "-ar", "8000", "-f", "s16le", "pipe:1"])
+                    "-ar", "1000", "-f", "s16le", "pipe:1"])
         samples = np.frombuffer(data, dtype="<i2").astype(np.float32) / 32768
-        usable = len(samples) // 8000 * 8000
+        usable = len(samples) // 1000 * 1000
         out = np.zeros(n)
         if usable:
-            blocks = samples[:usable].reshape(-1, 8000)
+            blocks = samples[:usable].reshape(-1, 1000)
             rms = np.sqrt(np.mean(blocks**2, axis=1) + 1e-8)
             db = 20 * np.log10(np.maximum(rms, 1e-5))
             out[:min(n, len(db))] = np.clip((db[:n] + 52) / 42, 0, 1)[:n]
@@ -118,20 +118,25 @@ def motion_energy(path, duration):
         out = np.zeros(n)
         if count > 1:
             frames = np.frombuffer(data[:count * frame_size], dtype=np.uint8).reshape(count, frame_size)
-            diffs = np.abs(frames[1:].astype(np.int16) - frames[:-1].astype(np.int16)).mean(axis=1)
-            end = min(n - 1, len(diffs))
-            out[1:end+1] = np.clip(diffs[:end] / 40.0, 0, 1)
+            for start in range(1, min(n, count), 256):
+                end = min(n, count, start + 256)
+                delta = frames[start:end].astype(np.int16) - frames[start - 1:end - 1]
+                out[start:end] = np.clip(np.abs(delta).mean(axis=1) / 40.0, 0, 1)
         return out
     except (subprocess.SubprocessError, ValueError):
         return np.zeros(n)
 
-def select_highlights(audio, motion, duration, count=5):
+def select_highlights(audio, motion, duration, count=5, *, clip_seconds=None):
     if duration < 12:
         raise ValueError("Please upload a video of at least 12 seconds.")
     raw = np.clip(0.68 * audio + 0.32 * motion, 0, 1)
     n = len(raw)
     clip_len = min(22, max(2, int(duration / (count * 1.5))))
     clip_len = min(clip_len, max(2, int(duration // count)))
+    if clip_seconds is not None:
+        if not 0 < clip_seconds <= duration / count:
+            raise ValueError("The source is too short for the requested clip lengths.")
+        clip_len = clip_seconds
     smooth = np.convolve(raw, np.ones(max(2,clip_len//2))/max(2,clip_len//2), mode="same")
     selected = []
     if duration >= count * (clip_len + 2):
