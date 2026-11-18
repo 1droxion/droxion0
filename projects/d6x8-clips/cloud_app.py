@@ -97,6 +97,18 @@ def clean_expired():
                     jobs.pop(directory.name, None)
                 shutil.rmtree(directory, ignore_errors=True)
 
+def periodic_cleanup():
+    """Remove old exported clips even when no new uploads arrive."""
+    while True:
+        time.sleep(900)
+        try:
+            clean_expired()
+        except OSError:
+            pass
+
+threading.Thread(target=periodic_cleanup, daemon=True, name="clip-expiration").start()
+
+
 def update(job_id: str, **data):
     with lock:
         if job_id in jobs:
@@ -244,7 +256,7 @@ def homepage(request: Request):
     html = re.sub(r'<section id="obs".*?</section>', "", html, count=1, flags=re.S)
     html = html.replace('/static/studio.js', '/static/cloud.js')
     html = html.replace('<link rel="stylesheet" href="/static/studio.css">',
-                        '<link rel="stylesheet" href="/static/studio.css">\\n<link rel="stylesheet" href="/static/cloud.css">')
+                        '<link rel="stylesheet" href="/static/studio.css"><link rel="stylesheet" href="/static/cloud.css">')
     html = html.replace('Direct public HTTPS MP4/MOV or your own YouTube video/live link. For YouTube, also upload the original recording — it is not downloaded from YouTube.',
         'Direct public HTTPS MP4/MOV file URL (auto-imported), or your own YouTube video/live link alongside your original uploaded recording.')
     html = html.replace('</form>', '<label class="rights-consent" for="rights"><input id="rights" type="checkbox" required> I own this recording or have permission to process it.</label></form>', 1)
