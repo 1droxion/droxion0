@@ -18,9 +18,9 @@ def test_private_stays_private(client):
     assert client.get("/api/jobs/" + "a"*32).status_code == 401
     assert client.post("/api/jobs",data={"rights":"true"},headers=ORIGIN).status_code == 401
 
-def test_public_rejects_unsupported_youtube_without_recording(client):
+def test_public_rejects_live_youtube_without_recording(client):
     res = client.post("/api/public/jobs",
-        data={"rights":"true","url":"https://youtu.be/dQw4w9WgXcQ"},
+        data={"rights":"true","url":"https://www.youtube.com/live/dQw4w9WgXcQ"},
         headers=ORIGIN)
     assert res.status_code == 400
     assert "YouTube" in res.json()["detail"]
@@ -73,7 +73,8 @@ def test_public_disabled_by_default(client,monkeypatch):
     assert response.status_code == 503
 
 
-def test_public_upload_generates_five_mp4s_end_to_end(client, tmp_path):
+@pytest.mark.parametrize("from_youtube", [False, True])
+def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_youtube):
     """Actual form upload, background job, rendered outputs and selected ZIP."""
     import shutil
     import subprocess
@@ -89,9 +90,19 @@ def test_public_upload_generates_five_mp4s_end_to_end(client, tmp_path):
         "-t", "12", "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-c:a", "aac", str(footage)
     ], check=True, timeout=30)
-    response = client.post("/api/public/jobs", headers=ORIGIN,
-        data={"rights":"true","template":"neon","captions":"false","caption_font":"anton"},
-        files={"video":("test.mp4", footage.read_bytes(), "video/mp4")})
+    data = {"rights": "true", "template": "neon", "captions": "false", "caption_font": "anton"}
+    if from_youtube:
+        def import_fixture(url, target, limit, max_duration):
+            assert url == "https://www.youtube.com/watch?v=ha-JqYDn2kA"
+            assert (limit, max_duration) == (cloud.PUBLIC_MAX_BYTES, cloud.PUBLIC_MAX_DURATION)
+            shutil.copyfile(footage, target)
+
+        monkeypatch.setattr(cloud, "download_youtube", import_fixture)
+        data["url"] = "https://youtu.be/ha-JqYDn2kA?si=test"
+        response = client.post("/api/public/jobs", headers=ORIGIN, data=data)
+    else:
+        response = client.post("/api/public/jobs", headers=ORIGIN, data=data,
+                               files={"video": ("test.mp4", footage.read_bytes(), "video/mp4")})
     assert response.status_code == 200, response.text
     job_id = response.json()["job_id"]
     deadline = time.monotonic() + 170

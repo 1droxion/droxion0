@@ -1,6 +1,6 @@
 """Secure single-operator web beta for DroxionClips.
 
-This intentionally does NOT scrape YouTube or expose the OBS file watcher.
+The online editor does not expose the local OBS file watcher.
 The Render web beta is password protected, runs one short render at a time,
 and deletes uploaded originals after processing.
 """
@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from creator_sources import creator_video_reference
+from youtube_import import download_youtube
 from app import (
     HERE, THEMES, CAPTION_FONTS, PinnedHTTPSConnection,
     direct_video_address, duration_of, audio_energy, motion_energy,
@@ -190,7 +191,10 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
-        if source_url:
+        if public and source_url and creator_video_reference(source_url):
+            update(job_id, progress=8, message="Importing YouTube video")
+            download_youtube(source_url, source, PUBLIC_MAX_BYTES, PUBLIC_MAX_DURATION)
+        elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
         if not 12 <= length <= (PUBLIC_MAX_DURATION if public else MAX_DURATION):
@@ -478,16 +482,12 @@ async def create_public_job(
         raise HTTPException(400, "Confirm you own or have permission to use the footage.")
     url = (url or "").strip()
     yt = creator_video_reference(url) if url else None
-    if yt and not video:
-        raise HTTPException(
-            400, "YouTube watch/live links cannot be downloaded directly. "
-                 "Download your own recording from YouTube Studio, then upload that MP4."
-        )
+    if yt and yt["kind"] == "live" and not video:
+        raise HTTPException(400, "For a finished livestream, paste its YouTube watch link or upload the OBS recording.")
     if not yt and bool(video) == bool(url):
-        raise HTTPException(400, "Paste a direct HTTPS MP4/MOV file link, or upload your video.")
+        raise HTTPException(400, "Paste a YouTube video link, a direct HTTPS MP4/MOV link, or upload your recording.")
     if url and not yt and not direct_video_address(url):
-        raise HTTPException(400, "That is not a direct downloadable MP4/MOV file link. "
-                                 "YouTube watch links require an original recording.")
+        raise HTTPException(400, "Use a YouTube video link or a direct public HTTPS MP4/MOV file link.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
         raise HTTPException(400, "Select a supported clip style and caption font.")
     caption_text = caption_text.strip() if captions else ""
@@ -539,7 +539,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if yt else url,True),
+            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True),
         ).start()
         accepted = True
         return {"job_id":job_id}

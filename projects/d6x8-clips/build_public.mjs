@@ -7,6 +7,11 @@ const output = join(root, 'public-dist');
 rmSync(output, {recursive:true, force:true});
 mkdirSync(output, {recursive:true});
 cpSync(join(root, 'static'), join(output, 'static'), {recursive:true});
+if (process.env.DROXIONCLIPS_PASTE_EDITOR === '1') {
+  cpSync(join(root, 'public-editor'), output, {recursive:true});
+  console.log('DroxionClips public paste editor built');
+  process.exit(0);
+}
 const studio = [
 '<section id="studio" class="studio public-studio" aria-labelledby="beta-heading">',
 '<div class="public-beta-card">',
