@@ -26,3 +26,19 @@ jobs:
         run: pip install -r requirements.txt -r requirements-dev.txt
       - name: Run unit and real render tests
         run: python -m pytest -q
+      - name: Install browser for responsive and workflow checks
+        run: python -m playwright install --with-deps chromium --only-shell
+      - name: Test mobile and desktop in Chromium
+        run: |
+          python -m uvicorn app:app --host 127.0.0.1 --port 8769 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8769/api/health
+          python tests/browser_check.py
+      - name: Save responsive screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droxionclips-browser-screenshots
+          path: projects/d6x8-clips/browser-screenshots/*.png
+          if-no-files-found: ignore
