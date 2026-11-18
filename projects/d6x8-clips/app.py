@@ -111,7 +111,7 @@ def audio_energy(path, duration):
 def motion_energy(path, duration):
     n = math.ceil(duration)
     try:
-        data = cmd(["ffmpeg", "-v", "error", "-filter_threads", "1", *VIDEO_INPUT, "-i", str(path), "-t", str(duration), "-an",
+        data = cmd(["ffmpeg", "-v", "error", "-filter_threads", "1", "-skip_loop_filter", "all", "-skip_frame", "noref", *VIDEO_INPUT, "-i", str(path), "-t", str(duration), "-an",
                     "-vf", "fps=1,scale=96:54,format=gray", "-f", "rawvideo", "pipe:1"])
         frame_size = 96 * 54
         count = len(data) // frame_size
@@ -192,7 +192,7 @@ def render(source, target, start, end, theme, index, caption_text="", caption_fo
         )
     filt = (
         "[0:v]split=2[bg][fg];"
-        "[bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=25:3[blur];"
+        "[bg]scale=180:320:force_original_aspect_ratio=increase,crop=180:320,boxblur=6:3,scale=720:1280[blur];"
         "[fg]scale=704:880:force_original_aspect_ratio=decrease[game];"
         "[blur][game]overlay=(W-w)/2:(H-h)/2[stage];"
         "[stage]" + ",".join(overlays) + "[v]"

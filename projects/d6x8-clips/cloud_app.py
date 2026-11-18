@@ -217,10 +217,12 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
         if not 12 <= length <= max_duration:
             maximum = "3 hours" if max_duration == PUBLIC_MAX_DURATION else f"{max_duration // 60} minutes"
             raise ValueError(f"Choose a video between 12 seconds and {maximum}.")
-        update(job_id, progress=26, message="Measuring motion and audio activity")
+        update(job_id, progress=26, message="Analyzing audio")
+        audio = audio_energy(source, length)
+        update(job_id, progress=33, message="Scanning video for motion")
+        motion = motion_energy(source, length)
         seconds = min(MAX_CLIP_SECONDS, int(length // clip_count)) if public and length >= MIN_CLIP_SECONDS * clip_count else None
-        picks = select_highlights(audio_energy(source, length), motion_energy(source, length),
-                                  length, count=clip_count, clip_seconds=seconds)
+        picks = select_highlights(audio, motion, length, count=clip_count, clip_seconds=seconds)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
