@@ -122,7 +122,7 @@ def test_rejects_invalid_source_and_cross_origin_requests():
     client = TestClient(app)
     unsupported = client.post("/api/jobs", data={"url": "https://www.youtube.com/watch?v=example"})
     assert unsupported.status_code == 400
-    assert "Upload your own original recording" in unsupported.json()["detail"]
+    assert "upload the video" in unsupported.json()["detail"]
     assert client.post("/api/jobs", files={"video": ("gameplay.txt", b"bad")}).status_code == 400
     assert client.post("/api/jobs", headers={"Origin": "https://example.com"}, data={
         "url": "https://example.com/video.mp4",
