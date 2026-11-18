@@ -1,7 +1,15 @@
 const isYouTube = raw => {
   try {
     const u = new URL(raw)
-    return u.protocol === 'https:' && ['youtube.com','www.youtube.com','m.youtube.com','youtu.be'].includes(u.hostname)
+    if (u.protocol !== 'https:') return false
+    const host = u.hostname.replace(/^(www\\.|m\\.)/, '')
+    let id = ''
+    if (host === 'youtu.be') id = u.pathname.split('/')[1] || ''
+    else if (host === 'youtube.com') {
+      if (u.pathname === '/watch') id = u.searchParams.get('v') || ''
+      else if (/^\\/(?:live|shorts)\\/[a-zA-Z0-9_-]+$/.test(u.pathname)) id = u.pathname.split('/')[2]
+    }
+    return /^[a-zA-Z0-9_-]{11}$/.test(id)
   } catch { return false }
 }
 const byId = id => document.getElementById(id)
