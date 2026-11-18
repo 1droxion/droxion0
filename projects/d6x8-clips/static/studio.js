@@ -2,12 +2,12 @@ const isYouTube = raw => {
   try {
     const u = new URL(raw)
     if (u.protocol !== 'https:') return false
-    const host = u.hostname.replace(/^(www\\.|m\\.)/, '')
+    const host = u.hostname.replace(/^(www\.|m\.)/, '')
     let id = ''
     if (host === 'youtu.be') id = u.pathname.split('/')[1] || ''
     else if (host === 'youtube.com') {
       if (u.pathname === '/watch') id = u.searchParams.get('v') || ''
-      else if (/^\\/(?:live|shorts)\\/[a-zA-Z0-9_-]+$/.test(u.pathname)) id = u.pathname.split('/')[2]
+      else if (/^\/(?:live|shorts)\/[a-zA-Z0-9_-]+$/.test(u.pathname)) id = u.pathname.split('/')[2]
     }
     return /^[a-zA-Z0-9_-]{11}$/.test(id)
   } catch { return false }
