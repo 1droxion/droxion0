@@ -55,6 +55,17 @@ def test_public_job_status_and_selected_zip(client, tmp_path):
     finally:
         cloud.jobs.pop(job_id,None)
 
+def test_oversized_upload_returns_readable_cors_error(client):
+    response = client.post(
+        "/api/public/jobs",
+        headers={"Origin":"https://droxion.com", "Content-Length":str(60 * 1024 * 1024)},
+        data={"rights":"true","url":"https://example.com/game.mp4"}
+    )
+    assert response.status_code == 413
+    assert response.headers.get("access-control-allow-origin") == "https://droxion.com"
+    assert "upload limit" in response.json()["detail"].lower()
+
+
 def test_public_disabled_by_default(client,monkeypatch):
     monkeypatch.setattr(cloud, "PUBLIC_TRIAL_ENABLED", False)
     response=client.post("/api/public/jobs",
