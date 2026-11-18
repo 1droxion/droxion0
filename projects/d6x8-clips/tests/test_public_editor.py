@@ -113,12 +113,24 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
             job = job_response.json()
             if job["status"] == "done":
                 assert len(job["clips"]) == 5
+                if from_youtube:
+                    assert all(30 <= item["end"] - item["start"] <= 35
+                               for item in job["clips"])
                 for index in range(1,6):
                     mp4 = client.get(
                         f"/api/public/jobs/{job_id}/files/D6X8_Highlight_{index:02d}.mp4",
                         headers=ORIGIN)
                     assert mp4.status_code == 200
                     assert len(mp4.content) > 1000
+                    if from_youtube:
+                        import json
+                        exported = tmp_path / f"export-{index}.mp4"
+                        exported.write_bytes(mp4.content)
+                        probe = subprocess.check_output([
+                            "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                            "-of", "json", str(exported),
+                        ], timeout=15)
+                        assert 30 <= float(json.loads(probe)["format"]["duration"]) <= 35.1
                 zip_response = client.get(
                     f"/api/public/jobs/{job_id}/selected.zip?clips=2,4",
                     headers=ORIGIN)

@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from creator_sources import creator_video_reference
-from youtube_import import download_youtube
+from youtube_import import HIGHLIGHT_COUNT, MAX_CLIP_SECONDS, MIN_SOURCE_SECONDS, download_youtube
 from app import (
     HERE, THEMES, CAPTION_FONTS, PinnedHTTPSConnection,
     direct_video_address, duration_of, audio_energy, motion_energy,
@@ -200,10 +200,14 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
         max_duration = PUBLIC_YOUTUBE_MAX_DURATION if youtube else (PUBLIC_MAX_DURATION if public else MAX_DURATION)
+        if youtube and length < MIN_SOURCE_SECONDS:
+            raise ValueError("Use a video at least 2 minutes 30 seconds long for five 30–35 second clips.")
         if not 12 <= length <= max_duration:
             raise ValueError(f"Choose a video between 12 seconds and {max_duration // 60} minutes.")
         update(job_id, progress=26, message="Measuring motion and audio activity")
-        picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length)
+        seconds = min(MAX_CLIP_SECONDS, int(length // HIGHLIGHT_COUNT)) if youtube else None
+        picks = select_highlights(audio_energy(source, length), motion_energy(source, length),
+                                  length, count=HIGHLIGHT_COUNT, clip_seconds=seconds)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
