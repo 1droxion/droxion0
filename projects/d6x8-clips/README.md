@@ -70,3 +70,16 @@ The web beta is served by `cloud_app:app` and is **not a public paid service**. 
 - Original recording is deleted when rendering ends. Generated clips are kept temporarily and expire on cleanup; download your clips promptly.
 
 Do **not** move `droxion.com`, `clips.droxion.com` or customer billing to this backend yet. The web beta needs traffic controls, monitoring, durable job storage, scalable queues, and a proper customer authentication system before public launch.
+
+## Limited public paste-first beta
+
+A separately gated public endpoint supports the main droxion.com creator workflow. Set
+`DROXIONCLIPS_PUBLIC_TRIAL_ENABLED=1` only after checking the public editor on a live staging service.
+
+- Users paste a **direct public HTTPS MP4/M4V/MOV file URL** or upload a recording they own.
+- YouTube **watch, Shorts and live URLs are recognized but not downloaded**. Upload the creator's original recording.
+- Anonymous trial is capped at **50 MB, five minutes, two jobs per IP per UTC day and 12 jobs total per UTC day**, with one active render per process.
+- Job IDs are random capability URLs for temporary downloads, not public customer accounts.
+- Temporary recordings and exports are deleted according to retention settings; this is not persistent video storage.
+- `droxion.com` frontend calls `/api/public/jobs` on this Render web service using allowlisted CORS origins.
+- No payments or paid subscriptions are enabled. Do not promise unlimited usage.

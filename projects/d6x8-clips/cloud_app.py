@@ -21,6 +21,7 @@ from pathlib import Path
 from urllib.parse import urlparse, urlunsplit
 
 from fastapi import FastAPI, Form, File, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -35,6 +36,12 @@ from app import (
 SECRET = os.environ.get("DROXIONCLIPS_BETA_PASSWORD", "")
 SESSION_SECRET = os.environ.get("DROXIONCLIPS_SESSION_SECRET", "")
 MAX_BYTES = 120 * 1024 * 1024
+PUBLIC_MAX_BYTES = 50 * 1024 * 1024
+PUBLIC_MAX_DURATION = 300
+PUBLIC_DAILY_GLOBAL_CAP = 12
+PUBLIC_DAILY_PER_IP_CAP = 2
+PUBLIC_ORIGINS = ("https://droxion.com", "https://www.droxion.com", "https://clips.droxion.com")
+PUBLIC_TRIAL_ENABLED = os.environ.get("DROXIONCLIPS_PUBLIC_TRIAL_ENABLED", "0") == "1"
 MAX_DURATION = 600
 RETENTION = 60 * 60
 COOKIE = "droxionclips_beta"
@@ -46,6 +53,11 @@ site.add_middleware(TrustedHostMiddleware, allowed_hosts=[
     "*.onrender.com", "droxion.com", "*.droxion.com",
     "localhost", "127.0.0.1", "testserver",
 ])
+site.add_middleware(
+    CORSMiddleware, allow_origins=list(PUBLIC_ORIGINS),
+    allow_methods=["GET", "POST"], allow_headers=["content-type"],
+    allow_credentials=False,
+)
 site.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 app = site
 jobs = {}
@@ -54,6 +66,7 @@ lock = threading.RLock()
 login_attempts = {}
 FILE_PATTERN = re.compile(r"D6X8_Highlight_0[1-5]\.mp4")
 JOB_PATTERN = re.compile(r"[a-f0-9]{32}")
+public_usage = {"day": "", "total": 0, "ip": {}}
 
 def configured():
     return len(SECRET) >= 14 and len(SESSION_SECRET) >= 32
@@ -143,7 +156,7 @@ def update(job_id: str, **data):
         if job_id in jobs:
             jobs[job_id].update(data)
 
-def download_direct_limited(url: str, target: Path):
+def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
     endpoint = direct_video_address(url)
     if not endpoint:
         raise ValueError("Use a direct public HTTPS MP4/MOV video-file URL, or upload your recording.")
@@ -157,14 +170,14 @@ def download_direct_limited(url: str, target: Path):
             if response.status != 200:
                 raise ValueError("The direct file URL didn't return a video. Upload the file instead.")
             header = response.getheader("Content-Length")
-            if header and header.isdecimal() and int(header) > MAX_BYTES:
+            if header and header.isdecimal() and int(header) > limit:
                 raise ValueError("The video is too large for this beta (120 MB maximum).")
             total = 0
             with target.open("wb") as out:
                 while part := response.read1(256 * 1024):
                     total += len(part)
-                    if total > MAX_BYTES:
-                        raise ValueError("The video is too large for this beta (120 MB maximum).")
+                    if total > limit:
+                        raise ValueError("The video exceeds the maximum file size for this editing mode.")
                     if time.monotonic() > deadline:
                         raise ValueError("The direct video download timed out. Upload the video instead.")
                     out.write(part)
@@ -173,22 +186,23 @@ def download_direct_limited(url: str, target: Path):
     finally:
         conn.close()
 
-def process(job_id, source, template, caption_text, caption_font, source_url):
+def process(job_id, source, template, caption_text, caption_font, source_url, public=False):
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
         if source_url:
-            download_direct_limited(source_url, source)
+            download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
-        if not 12 <= length <= MAX_DURATION:
-            raise ValueError("Choose a recording between 12 seconds and 10 minutes.")
+        if not 12 <= length <= (PUBLIC_MAX_DURATION if public else MAX_DURATION):
+            raise ValueError("Choose a recording between 12 seconds and " + ("5 minutes." if public else "10 minutes."))
         update(job_id, progress=26, message="Measuring motion and audio activity")
         picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
             render(source, folder / name, clip["start"], clip["end"], template, i, caption_text, caption_font)
-            clips.append({**clip, "number": i, "url": f"/api/jobs/{job_id}/files/{name}"})
+            prefix = "/api/public/jobs" if public else "/api/jobs"
+            clips.append({**clip, "number": i, "url": f"{prefix}/{job_id}/files/{name}"})
             update(job_id, progress=min(95, 28 + 13 * i), message=f"Rendering highlight {i} of 5", clips=list(clips))
         update(job_id, status="done", progress=100, message="Five clips ready — choose your favorites", clips=clips)
     except ValueError as error:
@@ -206,12 +220,12 @@ def process(job_id, source, template, caption_text, caption_font, source_url):
 
 @site.middleware("http")
 async def limits_and_headers(request: Request, call_next):
-    if request.method == "POST" and request.url.path == "/api/jobs":
-        if not authorized(request):
+    if request.method == "POST" and request.url.path in ("/api/jobs", "/api/public/jobs"):
+        if request.url.path == "/api/jobs" and not authorized(request):
             return JSONResponse({"detail": "Sign in to the private beta first."}, status_code=401)
         if request.headers.get("content-length", "").isdigit():
-            if int(request.headers["content-length"]) > MAX_BYTES + 1024 * 1024:
-                return JSONResponse({"detail": "Upload limit: 120 MB."}, status_code=413)
+            if int(request.headers["content-length"]) > (PUBLIC_MAX_BYTES if request.url.path.startswith("/api/public/") else MAX_BYTES) + 1024 * 1024:
+                return JSONResponse({"detail": "The file exceeds the upload limit."}, status_code=413)
         else:
             return JSONResponse({"detail": "Upload size is required."}, status_code=411)
     response = await call_next(request)
@@ -356,9 +370,19 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                 shutil.rmtree(folder, ignore_errors=True)
             guard.release()
 
+def require_job_access(request: Request, job_id: str):
+    """Public clip URLs act as 128-bit unguessable capability links."""
+    if PUBLIC_TRIAL_ENABLED and JOB_PATTERN.fullmatch(job_id):
+        with lock:
+            job = jobs.get(job_id)
+            if job and job.get("public"):
+                return
+    require_auth(request)
+
+
 @site.get("/api/jobs/{job_id}")
 def job_status(job_id: str, request: Request):
-    require_auth(request)
+    require_job_access(request, job_id)
     if not JOB_PATTERN.fullmatch(job_id):
         raise HTTPException(404, "Job not found.")
     with lock:
@@ -369,7 +393,7 @@ def job_status(job_id: str, request: Request):
 
 @site.get("/api/jobs/{job_id}/files/{filename}")
 def clip_file(job_id: str, filename: str, request: Request, download: bool=False):
-    require_auth(request)
+    require_job_access(request, job_id)
     if not JOB_PATTERN.fullmatch(job_id) or not FILE_PATTERN.fullmatch(filename):
         raise HTTPException(404, "Clip not found.")
     with lock:
@@ -385,7 +409,7 @@ def clip_file(job_id: str, filename: str, request: Request, download: bool=False
 
 @site.get("/api/jobs/{job_id}/selected.zip")
 def selected_zip(job_id: str, request: Request, clips: str="1,2,3,4,5"):
-    require_auth(request)
+    require_job_access(request, job_id)
     if not JOB_PATTERN.fullmatch(job_id):
         raise HTTPException(404, "Job not found.")
     if not re.fullmatch(r"[1-5](?:,[1-5]){0,4}", clips):
@@ -407,3 +431,129 @@ def selected_zip(job_id: str, request: Request, clips: str="1,2,3,4,5"):
                 bundle.write(path, arcname=f"DroxionClips_{number:02d}.mp4")
     return FileResponse(archive, filename="DroxionClips_Selected.zip",
                         media_type="application/zip")
+
+
+# Public trial uses an explicit global cap and per-IP cap; no unlimited rendering.
+def check_public_trial(request: Request):
+    if not PUBLIC_TRIAL_ENABLED:
+        raise HTTPException(503, "Online clipping is temporarily unavailable.")
+    origin = request.headers.get("origin", "")
+    if origin not in PUBLIC_ORIGINS or request.headers.get("sec-fetch-site","").lower() == "cross-site":
+        # It is normal that an approved public site appears as cross-site to the API
+        # because this API uses an onrender.com hostname.
+        if origin not in PUBLIC_ORIGINS:
+            raise HTTPException(403, "Open the editor from droxion.com.")
+    return request.client.host if request.client else "unknown"
+
+
+def public_job_or_404(job_id: str):
+    if not JOB_PATTERN.fullmatch(job_id):
+        raise HTTPException(404, "Clip job not found.")
+    with lock:
+        job = jobs.get(job_id)
+        if not job or not job.get("public"):
+            raise HTTPException(404, "Clip job not found.")
+    return job
+
+
+@site.post("/api/public/jobs")
+async def create_public_job(
+    request: Request, video: UploadFile | None=File(default=None),
+    url: str=Form(default=""), template: str=Form(default="neon"),
+    captions: bool=Form(default=False), caption_text: str=Form(default=""),
+    caption_font: str=Form(default="bebasneue"),
+    rights: bool=Form(default=False)
+):
+    ip = check_public_trial(request)
+    if not rights:
+        raise HTTPException(400, "Confirm you own or have permission to use the footage.")
+    url = (url or "").strip()
+    yt = creator_video_reference(url) if url else None
+    if yt and not video:
+        raise HTTPException(
+            400, "YouTube watch/live links cannot be downloaded directly. "
+                 "Download your own recording from YouTube Studio, then upload that MP4."
+        )
+    if not yt and bool(video) == bool(url):
+        raise HTTPException(400, "Paste a direct HTTPS MP4/MOV file link, or upload your video.")
+    if url and not yt and not direct_video_address(url):
+        raise HTTPException(400, "That is not a direct downloadable MP4/MOV file link. "
+                                 "YouTube watch links require an original recording.")
+    if template not in THEMES or caption_font not in CAPTION_FONTS:
+        raise HTTPException(400, "Select a supported clip style and caption font.")
+    caption_text = caption_text.strip() if captions else ""
+    if captions and (not caption_text or len(caption_text)>65 or len(caption_text.splitlines())!=1):
+        raise HTTPException(400, "Enter one caption line of up to 65 characters.")
+    if video and not (video.filename or "").lower().endswith((".mp4",".mov",".m4v",".mkv",".webm")):
+        raise HTTPException(400, "Supported files: MP4, MOV, M4V, MKV or WebM.")
+    if video and video.size is not None and video.size > PUBLIC_MAX_BYTES:
+        raise HTTPException(413, "Maximum online trial file size is 50 MB.")
+    if not guard.acquire(blocking=False):
+        raise HTTPException(409, "One video is processing. Try again shortly.")
+    folder = None
+    accepted = False
+    try:
+        day = time.strftime("%Y-%m-%d", time.gmtime())
+        with lock:
+            if public_usage["day"] != day:
+                public_usage.update(day=day,total=0,ip={})
+            if public_usage["total"] >= PUBLIC_DAILY_GLOBAL_CAP:
+                raise HTTPException(429, "Today's free trial capacity has been reached.")
+            if public_usage["ip"].get(ip,0) >= PUBLIC_DAILY_PER_IP_CAP:
+                raise HTTPException(429, "You've reached today's two-video trial limit.")
+        clean_expired()
+        job_id = uuid.uuid4().hex
+        folder = WORKSPACE / job_id
+        folder.mkdir(parents=True, exist_ok=False)
+        source = folder / "source.mp4"
+        if video:
+            total = 0
+            with source.open("wb") as output:
+                while chunk := await video.read(1024*1024):
+                    total += len(chunk)
+                    if total > PUBLIC_MAX_BYTES:
+                        raise HTTPException(413, "Maximum online trial file size is 50 MB.")
+                    output.write(chunk)
+            await video.close()
+            if total == 0:
+                raise HTTPException(400, "Your uploaded video is empty.")
+        with lock:
+            # Re-check caps under lock after file has been uploaded.
+            day = time.strftime("%Y-%m-%d", time.gmtime())
+            if public_usage["day"] != day:
+                public_usage.update(day=day,total=0,ip={})
+            if public_usage["total"] >= PUBLIC_DAILY_GLOBAL_CAP or public_usage["ip"].get(ip,0) >= PUBLIC_DAILY_PER_IP_CAP:
+                raise HTTPException(429, "Today's free trial limit has been reached.")
+            public_usage["total"] += 1
+            public_usage["ip"][ip] = public_usage["ip"].get(ip,0)+1
+            jobs[job_id] = {"status":"queued","progress":0,"message":"Queued for clipping",
+                            "created":time.time(),"clips":[],"public":True}
+        threading.Thread(
+            target=process, daemon=True,
+            args=(job_id,source,template,caption_text,caption_font,"" if yt else url,True),
+        ).start()
+        accepted = True
+        return {"job_id":job_id}
+    finally:
+        if not accepted:
+            if folder:
+                shutil.rmtree(folder,ignore_errors=True)
+            guard.release()
+
+
+@site.get("/api/public/jobs/{job_id}")
+def public_status(job_id: str, request: Request):
+    public_job_or_404(job_id)
+    return job_status(job_id,request)
+
+
+@site.get("/api/public/jobs/{job_id}/files/{filename}")
+def public_clip_file(job_id: str, filename: str, request: Request, download: bool=False):
+    public_job_or_404(job_id)
+    return clip_file(job_id,filename,request,download=download)
+
+
+@site.get("/api/public/jobs/{job_id}/selected.zip")
+def public_selected_zip(job_id: str, request: Request, clips: str="1,2,3,4,5"):
+    public_job_or_404(job_id)
+    return selected_zip(job_id,request,clips=clips)
