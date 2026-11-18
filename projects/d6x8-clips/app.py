@@ -223,7 +223,7 @@ async def new_job(video: UploadFile | None=File(default=None),
         raise HTTPException(400,"Invalid caption font.")
     if captions:
         caption_text = caption_text.strip()
-        if not caption_text or len(caption_text) > 65 or "\\n" in caption_text or "\\r" in caption_text:
+        if not caption_text or len(caption_text) > 65 or len(caption_text.splitlines()) != 1:
             raise HTTPException(400,"Enter one caption line (1–65 characters).")
     else:
         caption_text = ""
