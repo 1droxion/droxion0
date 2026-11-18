@@ -517,8 +517,6 @@ async def create_public_job(
     yt = creator_video_reference(url) if url else None
     if yt and not video and not PUBLIC_YOUTUBE_ENABLED:
         raise HTTPException(400, "Upload your recording or paste a direct HTTPS MP4/MOV file link. YouTube watch links are in beta.")
-    if yt and yt["kind"] == "live" and not video:
-        raise HTTPException(400, "For a finished livestream, paste its YouTube watch link or upload the OBS recording.")
     if not yt and bool(video) == bool(url):
         raise HTTPException(400, "Paste a YouTube video link, a direct HTTPS MP4/MOV link, or upload your recording.")
     if url and not yt and not direct_video_address(url):

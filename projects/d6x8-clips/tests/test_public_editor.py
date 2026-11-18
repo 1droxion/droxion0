@@ -19,7 +19,8 @@ def test_private_stays_private(client):
     assert client.get("/api/jobs/" + "a"*32).status_code == 401
     assert client.post("/api/jobs",data={"rights":"true"},headers=ORIGIN).status_code == 401
 
-def test_public_rejects_live_youtube_without_recording(client):
+def test_public_rejects_live_youtube_when_imports_disabled(client, monkeypatch):
+    monkeypatch.setattr(cloud, "PUBLIC_YOUTUBE_ENABLED", False)
     res = client.post("/api/public/jobs",
         data={"rights":"true","url":"https://www.youtube.com/live/dQw4w9WgXcQ"},
         headers=ORIGIN)
@@ -101,7 +102,7 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
             shutil.copyfile(footage, target)
 
         monkeypatch.setattr(cloud, "download_youtube", import_fixture)
-        data["url"] = "https://youtu.be/ha-JqYDn2kA?si=test"
+        data["url"] = "https://www.youtube.com/live/ha-JqYDn2kA?si=test"
         response = client.post("/api/public/jobs", headers=ORIGIN, data=data)
     else:
         response = client.post("/api/public/jobs", headers=ORIGIN, data=data,

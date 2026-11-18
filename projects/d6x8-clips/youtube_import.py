@@ -40,9 +40,7 @@ def require_tools():
 def download_youtube(url, target, limit, max_duration, min_duration=MIN_SOURCE_SECONDS):
     reference = creator_video_reference(url)
     if reference is None:
-        raise ValueError("Paste a valid YouTube watch or youtu.be link.")
-    if reference["kind"] == "live":
-        raise ValueError("Use the watch link for the finished livestream.")
+        raise ValueError("Paste a valid YouTube watch, live replay, or youtu.be link.")
     ffmpeg, node = shutil.which("ffmpeg"), shutil.which("node")
     if not ffmpeg or not node:
         raise ValueError("YouTube worker is missing FFmpeg or Node.")
@@ -54,7 +52,7 @@ def download_youtube(url, target, limit, max_duration, min_duration=MIN_SOURCE_S
         "--extractor-retries", "1", "--no-progress", "--no-warnings",
         "--format", FORMAT_SELECTOR, "--max-filesize", str(limit),
         "--match-filter",
-        f"live_status!=is_live & live_status!=is_upcoming & duration>={min_duration} & duration<={max_duration}",
+        f"live_status!=is_live & live_status!=is_upcoming & live_status!=post_live & duration>={min_duration} & duration<={max_duration}",
         "--output", str(target.with_suffix(".%(ext)s")), "--", reference["watch_url"],
     ]
     # During merge the separate streams and output can briefly coexist.
@@ -84,7 +82,7 @@ def download_youtube(url, target, limit, max_duration, min_duration=MIN_SOURCE_S
                 LOGGER.warning("YouTube import failed: %s", detail)
                 raise ValueError(detail)
     if not target.is_file() or not target.stat().st_size:
-        raise ValueError(f"YouTube returned no file within the {min_duration}–{max_duration} second duration and 1 GiB size limits.")
+        raise ValueError(f"YouTube returned no replay file. Wait for the stream to end and its replay to finish processing, or use a recording within the {min_duration}–{max_duration} second and 1 GiB limits.")
     if target.stat().st_size > limit:
         raise ValueError("The merged YouTube video exceeds 1 GiB.")
     with target.open("rb") as source:
