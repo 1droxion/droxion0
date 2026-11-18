@@ -40,7 +40,7 @@ def test_render(browser, base, temporary):
     page.get_by_text("Use a video link").click()
     page.locator("#url").fill("https://www.youtube.com/watch?v=sample")
     page.get_by_role("button", name="Create 5 Clips").click()
-    expect(page.locator("#message")).to_contain_text("upload the video")
+    expect(page.locator("#message")).to_contain_text("Upload your own original recording")
     page.locator("#file").set_input_files(source)
     expect(page.locator("#filename")).to_have_text("gameplay.mp4")
     page.locator(".caption-toggle").click()
