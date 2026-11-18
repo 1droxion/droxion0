@@ -11,7 +11,7 @@ on:
       - '.github/workflows/d6x8-clips-tests.yml'
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: projects/d6x8-clips
@@ -27,7 +27,12 @@ jobs:
       - name: Run unit and real render tests
         run: python -m pytest -q
       - name: Install browser for responsive and workflow checks
-        run: python -m playwright install --with-deps chromium --only-shell
+        run: |
+          browser_dir="$RUNNER_TEMP/droxion-browser"
+          npm install --prefix "$browser_dir" --no-audit --no-fund @sparticuz/chromium@141.0.0
+          cd "$browser_dir"
+          browser=$(node --input-type=module -e 'import chromium from "@sparticuz/chromium"; console.log(await chromium.executablePath())')
+          printf 'DROXION_BROWSER=%s\n' "$browser" >> "$GITHUB_ENV"
       - name: Test mobile and desktop in Chromium
         run: |
           python -m uvicorn app:app --host 127.0.0.1 --port 8769 &
