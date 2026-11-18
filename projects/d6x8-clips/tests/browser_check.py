@@ -38,7 +38,7 @@ def test_render(browser, base, temporary):
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(base)
     page.get_by_text("Use a video link").click()
-    page.locator("#url").fill("https://www.youtube.com/watch?v=sample")
+    page.locator("#url").fill("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
     page.get_by_role("button", name="Create 5 Clips").click()
     expect(page.locator("#message")).to_contain_text("Upload your own original recording")
     page.locator("#file").set_input_files(source)
