@@ -31,6 +31,9 @@ def download_youtube(url, target, limit, max_duration):
     except (OSError, subprocess.CalledProcessError) as error:
         raise ValueError("YouTube didn't provide a downloadable video for this link. Check that it plays publicly, or upload your recording.") from error
     if not target.is_file() or target.stat().st_size == 0:
-        raise ValueError("Import a completed YouTube video between 12 seconds and five minutes, or upload your recording.")
+        raise ValueError(f"Import a completed YouTube video between 12 seconds and {max_duration // 60} minutes that fits the 50 MB limit.")
+    with target.open("rb") as source:
+        if source.read(8)[4:] != b"ftyp":
+            raise ValueError("YouTube did not return a playable MP4 from this server. Upload the original recording instead.")
     if target.stat().st_size > limit:
         raise ValueError("The YouTube video exceeds the 50 MB online limit. Upload a shorter recording.")

@@ -39,6 +39,7 @@ SESSION_SECRET = os.environ.get("DROXIONCLIPS_SESSION_SECRET", "")
 MAX_BYTES = 120 * 1024 * 1024
 PUBLIC_MAX_BYTES = 50 * 1024 * 1024
 PUBLIC_MAX_DURATION = 300
+PUBLIC_YOUTUBE_MAX_DURATION = 600
 PUBLIC_DAILY_GLOBAL_CAP = 12
 PUBLIC_DAILY_PER_IP_CAP = 2
 PUBLIC_ORIGINS = ("https://droxion.com", "https://www.droxion.com", "https://clips.droxion.com")
@@ -191,14 +192,16 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
-        if public and source_url and creator_video_reference(source_url):
+        youtube = bool(public and source_url and creator_video_reference(source_url))
+        if youtube:
             update(job_id, progress=8, message="Importing YouTube video")
-            download_youtube(source_url, source, PUBLIC_MAX_BYTES, PUBLIC_MAX_DURATION)
+            download_youtube(source_url, source, PUBLIC_MAX_BYTES, PUBLIC_YOUTUBE_MAX_DURATION)
         elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
-        if not 12 <= length <= (PUBLIC_MAX_DURATION if public else MAX_DURATION):
-            raise ValueError("Choose a recording between 12 seconds and " + ("5 minutes." if public else "10 minutes."))
+        max_duration = PUBLIC_YOUTUBE_MAX_DURATION if youtube else (PUBLIC_MAX_DURATION if public else MAX_DURATION)
+        if not 12 <= length <= max_duration:
+            raise ValueError(f"Choose a video between 12 seconds and {max_duration // 60} minutes.")
         update(job_id, progress=26, message="Measuring motion and audio activity")
         picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length)
         clips = []

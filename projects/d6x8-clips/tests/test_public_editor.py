@@ -87,14 +87,14 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
         "ffmpeg", "-y", "-v", "error",
         "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10",
         "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=22050",
-        "-t", "12", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-t", "503" if from_youtube else "12", "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-c:a", "aac", str(footage)
     ], check=True, timeout=30)
     data = {"rights": "true", "template": "neon", "captions": "false", "caption_font": "anton"}
     if from_youtube:
         def import_fixture(url, target, limit, max_duration):
             assert url == "https://www.youtube.com/watch?v=ha-JqYDn2kA"
-            assert (limit, max_duration) == (cloud.PUBLIC_MAX_BYTES, cloud.PUBLIC_MAX_DURATION)
+            assert (limit, max_duration) == (cloud.PUBLIC_MAX_BYTES, cloud.PUBLIC_YOUTUBE_MAX_DURATION)
             shutil.copyfile(footage, target)
 
         monkeypatch.setattr(cloud, "download_youtube", import_fixture)
