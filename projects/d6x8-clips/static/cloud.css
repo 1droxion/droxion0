@@ -1,0 +1,15 @@
+
+/* Private online beta refinements; original premium DroxionClips styles remain. */
+.web-note{margin:20px auto;padding:16px 19px;background:#11101b;border:1px solid #b4fd3760;border-radius:14px;color:#ded9e7;text-align:center;font-size:13px;max-width:1200px;line-height:1.5}
+.rights-consent{display:flex;gap:10px;align-items:flex-start;margin:13px 0 0;color:#f3eaf9;line-height:1.4;font-size:13px}
+.rights-consent input{width:18px;height:18px;margin-top:1px;flex-shrink:0;accent-color:#d4ff00}
+.selected-tools{margin-top:25px;border:1px solid #d4ff0090;padding:15px 18px;border-radius:15px;background:linear-gradient(120deg,#292137,#111513);display:flex;align-items:center;flex-wrap:wrap;gap:14px}
+.selected-tools>div{flex:1;min-width:200px}.selected-tools strong{font-size:20px}
+.selected-tools p{font-size:13px;line-height:1.45;color:#d4cadb;margin:4px 0}
+.selected-tools button{border:1px solid #7d7681;border-radius:10px;padding:12px 14px;background:#18131d;color:#fff;font-weight:850;cursor:pointer}
+.selected-tools button.cta{background:#d4ff00;color:#161914;border:0}
+.selected-tools button:disabled{opacity:.45;cursor:not-allowed}
+.selection-count{font-size:13px;color:#d0c9d8;white-space:nowrap}
+.clip-choice{display:flex;align-items:center;gap:8px;padding:10px 0;font-weight:800;color:#f4f1f8;font-size:13px}
+.clip-choice input{width:17px;height:17px;accent-color:#d4ff00;cursor:pointer}
+@media(max-width:620px){.selected-tools{flex-direction:column;align-items:stretch}.selected-tools button{width:100%}}
