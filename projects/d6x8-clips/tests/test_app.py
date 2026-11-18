@@ -45,7 +45,7 @@ def test_five_templates_and_health():
     }
     page = client.get("/")
     assert page.status_code == 200
-    assert "GENERATE 5 HIGHLIGHTS" in page.text
+    assert "Generate 5 Clips" in page.text
 
 def test_local_urls_and_video_watch_pages_are_rejected():
     for url in (
