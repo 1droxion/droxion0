@@ -1,6 +1,6 @@
 """Secure single-operator web beta for DroxionClips.
 
-This intentionally does NOT scrape YouTube or expose the OBS file watcher.
+The online editor does not expose the local OBS file watcher.
 The Render web beta is password protected, runs one short render at a time,
 and deletes uploaded originals after processing.
 """
@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from creator_sources import creator_video_reference
+from youtube_import import HIGHLIGHT_COUNT, MAX_CLIP_SECONDS, MIN_SOURCE_SECONDS, download_youtube
 from app import (
     HERE, THEMES, CAPTION_FONTS, PinnedHTTPSConnection,
     direct_video_address, duration_of, audio_energy, motion_energy,
@@ -38,6 +39,7 @@ SESSION_SECRET = os.environ.get("DROXIONCLIPS_SESSION_SECRET", "")
 MAX_BYTES = 120 * 1024 * 1024
 PUBLIC_MAX_BYTES = 50 * 1024 * 1024
 PUBLIC_MAX_DURATION = 300
+PUBLIC_YOUTUBE_MAX_DURATION = 600
 PUBLIC_DAILY_GLOBAL_CAP = 12
 PUBLIC_DAILY_PER_IP_CAP = 2
 PUBLIC_ORIGINS = ("https://droxion.com", "https://www.droxion.com", "https://clips.droxion.com")
@@ -190,13 +192,22 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
-        if source_url:
+        youtube = bool(public and source_url and creator_video_reference(source_url))
+        if youtube:
+            update(job_id, progress=8, message="Importing YouTube video")
+            download_youtube(source_url, source, PUBLIC_MAX_BYTES, PUBLIC_YOUTUBE_MAX_DURATION)
+        elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
-        if not 12 <= length <= (PUBLIC_MAX_DURATION if public else MAX_DURATION):
-            raise ValueError("Choose a recording between 12 seconds and " + ("5 minutes." if public else "10 minutes."))
+        max_duration = PUBLIC_YOUTUBE_MAX_DURATION if youtube else (PUBLIC_MAX_DURATION if public else MAX_DURATION)
+        if youtube and length < MIN_SOURCE_SECONDS:
+            raise ValueError("Use a video at least 2 minutes 30 seconds long for five 30–35 second clips.")
+        if not 12 <= length <= max_duration:
+            raise ValueError(f"Choose a video between 12 seconds and {max_duration // 60} minutes.")
         update(job_id, progress=26, message="Measuring motion and audio activity")
-        picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length)
+        seconds = min(MAX_CLIP_SECONDS, int(length // HIGHLIGHT_COUNT)) if youtube else None
+        picks = select_highlights(audio_energy(source, length), motion_energy(source, length),
+                                  length, count=HIGHLIGHT_COUNT, clip_seconds=seconds)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
@@ -478,16 +489,12 @@ async def create_public_job(
         raise HTTPException(400, "Confirm you own or have permission to use the footage.")
     url = (url or "").strip()
     yt = creator_video_reference(url) if url else None
-    if yt and not video:
-        raise HTTPException(
-            400, "YouTube watch/live links cannot be downloaded directly. "
-                 "Download your own recording from YouTube Studio, then upload that MP4."
-        )
+    if yt and yt["kind"] == "live" and not video:
+        raise HTTPException(400, "For a finished livestream, paste its YouTube watch link or upload the OBS recording.")
     if not yt and bool(video) == bool(url):
-        raise HTTPException(400, "Paste a direct HTTPS MP4/MOV file link, or upload your video.")
+        raise HTTPException(400, "Paste a YouTube video link, a direct HTTPS MP4/MOV link, or upload your recording.")
     if url and not yt and not direct_video_address(url):
-        raise HTTPException(400, "That is not a direct downloadable MP4/MOV file link. "
-                                 "YouTube watch links require an original recording.")
+        raise HTTPException(400, "Use a YouTube video link or a direct public HTTPS MP4/MOV file link.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
         raise HTTPException(400, "Select a supported clip style and caption font.")
     caption_text = caption_text.strip() if captions else ""
@@ -539,7 +546,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if yt else url,True),
+            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True),
         ).start()
         accepted = True
         return {"job_id":job_id}

@@ -77,7 +77,7 @@ A separately gated public endpoint supports the main droxion.com creator workflo
 `DROXIONCLIPS_PUBLIC_TRIAL_ENABLED=1` only after checking the public editor on a live staging service.
 
 - Users paste a **direct public HTTPS MP4/M4V/MOV file URL** or upload a recording they own.
-- YouTube **watch, Shorts and live URLs are recognized but not downloaded**. Upload the creator's original recording.
+- The public paste editor supports importing completed public YouTube watch and Shorts URLs up to 10 minutes that provide a compatible video stream within 50 MB. File uploads and direct file links retain the five-minute limit. Active live feeds require an OBS recording. Enable the frontend build with `DROXIONCLIPS_PASTE_EDITOR=1 node build_public.mjs` after verifying a real import on the deployed backend.
 - Anonymous trial is capped at **50 MB, five minutes, two jobs per IP per UTC day and 12 jobs total per UTC day**, with one active render per process.
 - Job IDs are random capability URLs for temporary downloads, not public customer accounts.
 - Temporary recordings and exports are deleted according to retention settings; this is not persistent video storage.

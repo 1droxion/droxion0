@@ -125,13 +125,17 @@ def motion_energy(path, duration):
     except (subprocess.SubprocessError, ValueError):
         return np.zeros(n)
 
-def select_highlights(audio, motion, duration, count=5):
+def select_highlights(audio, motion, duration, count=5, *, clip_seconds=None):
     if duration < 12:
         raise ValueError("Please upload a video of at least 12 seconds.")
     raw = np.clip(0.68 * audio + 0.32 * motion, 0, 1)
     n = len(raw)
     clip_len = min(22, max(2, int(duration / (count * 1.5))))
     clip_len = min(clip_len, max(2, int(duration // count)))
+    if clip_seconds is not None:
+        if not 0 < clip_seconds <= duration / count:
+            raise ValueError("The source is too short for the requested clip lengths.")
+        clip_len = clip_seconds
     smooth = np.convolve(raw, np.ones(max(2,clip_len//2))/max(2,clip_len//2), mode="same")
     selected = []
     if duration >= count * (clip_len + 2):
