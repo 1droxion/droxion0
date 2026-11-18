@@ -103,7 +103,10 @@ function showClips(clips) {
   }
   sync()
 }
-file.addEventListener('change',()=>selectFile(file.files[0]))
+file.addEventListener('change',()=>{
+  selectFile(file.files[0])
+  if(selectedFile && !isYouTube(url.value.trim()))url.value=''
+})
 url.addEventListener('input',()=>{
   // A YouTube reference may accompany an uploaded recording; direct MP4 is standalone.
   if(url.value.trim()&&!isYouTube(url.value.trim())) {
