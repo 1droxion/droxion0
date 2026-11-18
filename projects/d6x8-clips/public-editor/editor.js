@@ -6,7 +6,7 @@ const status=$("editorStatus"),statusText=$("statusText"),progress=$("clipProgre
 const results=$("clipResults"),cards=$("clipCards"),submit=$("startClipping");
 const captions=$("captionsOn"),text=$("captionText"),captionWrap=$("captionTextWrap");
 const selectAll=$("selectAllClips"),download=$("downloadSelected"),count=$("selectedCount");
-let job=null,clips=[];
+let job=null,clips=[],retryUpload=false;
 const youtube=raw=>{
   try{
     const u=new URL(raw);
@@ -95,15 +95,20 @@ async function run(){
 }
 form.addEventListener("submit",async e=>{
   e.preventDefault();
+  if(submit.disabled)return;
+  retryUpload=false;
   submit.disabled=true;
   try{await run();}
   catch(err){
     const linkOnly=youtube(url.value.trim())&&!file.files.length;
-    notice((err.message||"Unable to create clips.")+(linkOnly?" Upload the original recording to retry with these settings.":""),0,true);
+    const blocked=linkOnly&&/sign in to confirm|not a bot|youtube blocked/i.test(err.message);
+    const message=blocked?"YouTube blocked this import. Upload the video file to continue."
+      :err.message||"Unable to create clips.";
+    notice(message,0,true);
     if(linkOnly){
       const retry=document.createElement("button");
       retry.type="button";retry.className="file-cta";retry.textContent="Upload Video";
-      retry.addEventListener("click",()=>file.click());
+      retry.addEventListener("click",()=>{retryUpload=true;file.click();});
       statusText.append(" ",retry);
     }
   }
@@ -118,9 +123,15 @@ captions.addEventListener("change",updateCaptions);
 updateCaptions();
 file.addEventListener("change",()=>{
   fileName.textContent=file.files[0]?.name||"No video selected";
-  if(file.files[0]&&!youtube(url.value.trim()))url.value="";
+  if(!file.files.length||submit.disabled)return;
+  if(!youtube(url.value.trim()))url.value="";
+  if(retryUpload){
+    retryUpload=false;
+    form.requestSubmit();
+  }
 });
 url.addEventListener("input",()=>{
+  retryUpload=false;
   if(url.value.trim()&&!youtube(url.value.trim())){file.value="";fileName.textContent="No video selected";}
   $("sourceHelp").textContent=youtube(url.value.trim())
     ?"YouTube link detected. If the import is blocked, upload your original recording."
