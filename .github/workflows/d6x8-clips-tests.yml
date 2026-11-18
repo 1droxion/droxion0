@@ -1,0 +1,28 @@
+name: D6X8 Clips tests
+on:
+  pull_request:
+    paths:
+      - 'projects/d6x8-clips/**'
+      - '.github/workflows/d6x8-clips-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'projects/d6x8-clips/**'
+      - '.github/workflows/d6x8-clips-tests.yml'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: projects/d6x8-clips
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install packages
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run unit and real render tests
+        run: python -m pytest -q
