@@ -63,7 +63,7 @@
                 <strong id="filename">Upload Your Gameplay</strong>
                 <small>Browse or drop a video · 850 MB max</small>
               </label>
-              <details id="linkOptions"><summary>Use a video link</summary><label class="visually-hidden" for="url">Direct video URL</label><input id="url" name="url" type="url" placeholder="https://…/gameplay.mp4"><small>Direct public HTTPS MP4, M4V or MOV. For YouTube or Twitch, upload footage you have permission to use.</small></details>
+              <details id="linkOptions"><summary>Use a video link</summary><label class="visually-hidden" for="url">Direct video URL</label><input id="url" name="url" type="url" placeholder="https://…/gameplay.mp4"><small>Direct public HTTPS MP4/MOV or your own YouTube video/live link. For YouTube, also upload the original recording — it is not downloaded from YouTube.</small></details>
             </div>
             <div class="field divider">
               <label for="template">✦ &nbsp;Pro Style</label>
@@ -100,6 +100,14 @@
         </form>
         <div class="status" id="status" hidden role="status" aria-live="polite"><p id="message"></p><progress max="100" id="bar" value="0"></progress></div>
         <div class="results" id="results" aria-live="polite"></div>
+      </section>
+      <section id="obs" class="obs-studio" aria-labelledby="obs-title">
+        <div class="obs-intro"><div><span class="eyebrow">Live creator workflow</span><h2 id="obs-title">Clip your OBS replay recordings</h2><p>Choose your OBS recordings folder on this computer. When OBS saves a new replay or completed recording there, DroxionClips can create five highlights from that file. Keep this app running.</p></div><span class="obs-state" id="obsState">Not watching</span></div>
+        <div class="obs-controls">
+          <div class="field obs-folder"><label for="obsFolder">OBS recordings folder</label><input id="obsFolder" type="text" placeholder="C:\\Users\\You\\Videos\\OBS" autocomplete="off"><small>Use a folder inside your Windows user directory. Existing recordings aren't processed automatically.</small></div>
+          <div class="obs-actions"><button type="button" class="cta" id="obsStart">Start watching</button><button type="button" class="obs-stop" id="obsStop">Stop</button></div>
+        </div>
+        <p id="obsMessage" class="obs-message" role="status" aria-live="polite">For live streams, use OBS Replay Buffer or recording segments. The app processes saved files, not an active YouTube stream.</p><button id="obsView" type="button" class="obs-stop" hidden>View latest OBS clips</button>
       </section>
       <section class="platforms" aria-label="Platforms and studio features">
         <strong>Create for<br>All Platforms</strong>

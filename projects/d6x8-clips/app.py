@@ -12,6 +12,9 @@ import time
 import uuid
 from pathlib import Path
 from PIL import ImageFont
+from pydantic import BaseModel
+from creator_sources import creator_video_reference
+from obs_watch import RecordingWatcher, safe_recordings_directory
 from urllib.parse import urlparse, urlunsplit
 
 import numpy as np
@@ -49,7 +52,7 @@ processing = threading.BoundedSemaphore(1)
 
 @app.middleware("http")
 async def guard_upload(request: Request, call_next):
-    if request.method == "POST" and request.url.path == "/api/jobs":
+    if request.method == "POST" and request.url.path in ("/api/jobs", "/api/obs/start", "/api/obs/stop"):
         origin = request.headers.get("origin")
         if origin and origin != f"{request.url.scheme}://{request.headers['host']}":
             return JSONResponse({"detail": "Open the local studio to submit footage."}, 403)
@@ -58,6 +61,10 @@ async def guard_upload(request: Request, call_next):
             return JSONResponse({"detail": "A valid upload size is required."}, 411)
         if int(length) > MAX_BYTES + 1024 * 1024:
             return JSONResponse({"detail": "Maximum video size is 850 MB."}, 413)
+        if request.url.path != "/api/jobs":
+            if not request.headers.get("content-type", "").startswith("application/json"):
+                return JSONResponse({"detail": "Send a JSON request from the local studio."}, 415)
+            return await call_next(request)
         if not processing.acquire(blocking=False):
             return JSONResponse({"detail": "A clip job is running. Wait for it to finish."}, 409)
         try:
@@ -299,8 +306,12 @@ async def new_job(request: Request, video: UploadFile | None=File(default=None),
                   url: str | None=Form(default=None), template: str=Form(default="neon"),
                   captions: bool=Form(default=False), caption_text: str=Form(default=""),
                   caption_font: str=Form(default="impact")):
-    if bool(video)==bool(url and url.strip()):
-        raise HTTPException(400,"Choose a file or direct MP4 link.")
+    youtube_ref = creator_video_reference(url) if url else None
+    if youtube_ref:
+        if not video:
+            raise HTTPException(400, "This YouTube link identifies a video only. Upload your own original recording to create clips.")
+    elif bool(video) == bool(url and url.strip()):
+        raise HTTPException(400, "Choose a recording or direct video file link.")
     if template not in THEMES:
         raise HTTPException(400,"Invalid template.")
     if caption_font not in CAPTION_FONTS:
@@ -311,7 +322,7 @@ async def new_job(request: Request, video: UploadFile | None=File(default=None),
             raise HTTPException(400,"Enter one caption line (1–65 characters).")
     else:
         caption_text = ""
-    if url:
+    if url and not youtube_ref:
         try:
             parsed = urlparse(url.strip())
             if parsed.scheme != "https" or not parsed.hostname or not re.search(r"\.(mp4|m4v|mov)$", parsed.path, re.I):
@@ -341,15 +352,91 @@ async def new_job(request: Request, video: UploadFile | None=File(default=None),
         finally:
             await video.close()
     with lock:
-        jobs[job_id]={"status":"queued","progress":0,"message":"Queued","clips":[]}
+        jobs[job_id]={"status":"queued","progress":0,"message":"Queued","clips":[],
+                      "video_reference": youtube_ref}
     worker = threading.Thread(
         target=process,
-        args=(job_id, source, template, caption_text, caption_font, url.strip() if url else None),
+        args=(job_id, source, template, caption_text, caption_font,
+              None if youtube_ref else (url.strip() if url else None)),
         daemon=True,
     )
     worker.start()
     request.state.worker_started = True
     return {"job_id":job_id}
+
+class OBSWatchSettings(BaseModel):
+    directory: str
+    source_url: str = ""
+    template: str = "neon"
+    captions: bool = False
+    caption_text: str = ""
+    caption_font: str = "bebasneue"
+
+
+def completed_obs_recording(source: Path, options: dict):
+    """Queue one finished, creator-recorded OBS file. No stream downloading."""
+    if not processing.acquire(blocking=False):
+        return None
+    folder = None
+    try:
+        expire_exports()
+        job_id = uuid.uuid4().hex
+        folder = WORKSPACE / job_id
+        folder.mkdir(parents=True, exist_ok=False)
+        target = folder / "source.mp4"
+        # Copy only previously checked, directly contained recordings.
+        if source.is_symlink() or source.stat().st_size > MAX_BYTES:
+            raise ValueError("OBS recording must be a normal file under 850 MB.")
+        with source.open("rb") as inp, target.open("wb") as out:
+            shutil.copyfileobj(inp, out, length=1024 * 1024)
+        with lock:
+            jobs[job_id] = {"status": "queued", "progress": 0, "message": "OBS recording queued",
+                            "clips": [], "video_reference": options.get("youtube_reference")}
+        worker = threading.Thread(
+            target=process,
+            args=(job_id, target, options["template"], options["caption_text"], options["caption_font"], None),
+            daemon=True)
+        worker.start()
+        return job_id
+    except Exception:
+        if folder:
+            shutil.rmtree(folder, ignore_errors=True)
+        processing.release()
+        raise
+
+
+obs_watcher = RecordingWatcher(completed_obs_recording)
+
+
+@app.post("/api/obs/start")
+def start_obs_watching(settings: OBSWatchSettings):
+    if settings.template not in THEMES or settings.caption_font not in CAPTION_FONTS:
+        raise HTTPException(400, "Invalid style or font.")
+    caption_text = settings.caption_text.strip() if settings.captions else ""
+    if settings.captions and (not caption_text or len(caption_text) > 65 or len(caption_text.splitlines()) != 1):
+        raise HTTPException(400, "Enter one caption line (1–65 characters).")
+    yt_ref = creator_video_reference(settings.source_url) if settings.source_url else None
+    if settings.source_url and not yt_ref:
+        raise HTTPException(400, "Use a valid YouTube watch or live link, or leave the reference empty.")
+    try:
+        directory = safe_recordings_directory(settings.directory)
+        return obs_watcher.start(str(directory), {
+            "template": settings.template, "caption_text": caption_text,
+            "caption_font": settings.caption_font, "youtube_reference": yt_ref,
+        })
+    except (ValueError, OSError) as error:
+        raise HTTPException(400, str(error)) from error
+
+
+@app.post("/api/obs/stop")
+def stop_obs_watching():
+    return obs_watcher.stop()
+
+
+@app.get("/api/obs/status")
+def obs_watching_status():
+    return obs_watcher.status()
+
 
 @app.get("/api/jobs/{job_id}")
 def job_info(job_id: str):
