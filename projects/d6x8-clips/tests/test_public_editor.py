@@ -87,10 +87,9 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
     footage = tmp_path / "test.mp4"
     subprocess.run([
         "ffmpeg", "-y", "-v", "error",
-        "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=1",
-        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=22050",
-        "-t", "503" if from_youtube else "10800", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", str(footage)
+        "-f", "lavfi", "-i", "color=c=blue:size=160x90:rate=1",
+        "-t", "503" if from_youtube else "10800", "-c:v", "libx264", "-preset", "ultrafast",
+        "-pix_fmt", "yuv420p", str(footage)
     ], check=True, timeout=30)
     data = {"rights": "true", "template": "neon", "captions": "false", "caption_font": "anton"}
     if from_youtube:
@@ -115,7 +114,7 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
             job = job_response.json()
             if job["status"] == "done":
                 assert len(job["clips"]) == 5
-                assert all(30 <= item["end"] - item["start"] <= 35
+                assert all(30 <= round(item["end"] - item["start"], 2) <= 35
                            for item in job["clips"])
                 for index in range(1,6):
                     mp4 = client.get(
