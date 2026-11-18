@@ -27,7 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from creator_sources import creator_video_reference
-from youtube_import import HIGHLIGHT_COUNT, MAX_CLIP_SECONDS, MIN_SOURCE_SECONDS, download_youtube
+from youtube_import import HIGHLIGHT_COUNT, MAX_CLIP_SECONDS, MIN_CLIP_SECONDS, download_youtube, require_tools
 from app import (
     HERE, THEMES, CAPTION_FONTS, PinnedHTTPSConnection,
     direct_video_address, duration_of, audio_energy, motion_energy,
@@ -38,9 +38,9 @@ SECRET = os.environ.get("DROXIONCLIPS_BETA_PASSWORD", "")
 SESSION_SECRET = os.environ.get("DROXIONCLIPS_SESSION_SECRET", "")
 MAX_BYTES = 120 * 1024 * 1024
 PUBLIC_MAX_BYTES = 1024**3
-PUBLIC_YOUTUBE_MAX_BYTES = 50 * 1024 * 1024
+PUBLIC_YOUTUBE_MAX_BYTES = PUBLIC_MAX_BYTES
 PUBLIC_MAX_DURATION = 3 * 60 * 60
-PUBLIC_YOUTUBE_MAX_DURATION = 600
+PUBLIC_YOUTUBE_MAX_DURATION = PUBLIC_MAX_DURATION
 PUBLIC_YOUTUBE_ENABLED = os.environ.get("DROXIONCLIPS_YOUTUBE_ENABLED") == "1"
 PUBLIC_DAILY_GLOBAL_CAP = 12
 PUBLIC_DAILY_PER_IP_CAP = 2
@@ -141,6 +141,9 @@ def clean_expired():
         if directory.is_dir() and JOB_PATTERN.fullmatch(directory.name):
             if directory.stat().st_mtime < deadline:
                 with lock:
+                    job = jobs.get(directory.name, {})
+                    if job.get("status") in {"queued", "processing"}:
+                        continue
                     jobs.pop(directory.name, None)
                 shutil.rmtree(directory, ignore_errors=True)
 
@@ -152,6 +155,12 @@ def periodic_cleanup():
             clean_expired()
         except OSError:
             pass
+
+@site.on_event("startup")
+def check_video_tools():
+    if os.environ.get("DROXIONCLIPS_VERIFY_VIDEO_TOOLS") == "1":
+        require_tools()
+
 
 threading.Thread(target=periodic_cleanup, daemon=True, name="clip-expiration").start()
 
@@ -191,35 +200,35 @@ def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
     finally:
         conn.close()
 
-def process(job_id, source, template, caption_text, caption_font, source_url, public=False):
+def process(job_id, source, template, caption_text, caption_font, source_url, public=False, clip_count=HIGHLIGHT_COUNT):
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
         youtube = bool(public and source_url and creator_video_reference(source_url))
         if youtube:
             update(job_id, progress=8, message="Importing YouTube video")
-            download_youtube(source_url, source, PUBLIC_YOUTUBE_MAX_BYTES, PUBLIC_YOUTUBE_MAX_DURATION)
+            download_youtube(source_url, source, PUBLIC_YOUTUBE_MAX_BYTES, PUBLIC_YOUTUBE_MAX_DURATION, MIN_CLIP_SECONDS * clip_count)
         elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
         max_duration = PUBLIC_YOUTUBE_MAX_DURATION if youtube else (PUBLIC_MAX_DURATION if public else MAX_DURATION)
-        if youtube and length < MIN_SOURCE_SECONDS:
-            raise ValueError("Use a video at least 2 minutes 30 seconds long for five 30–35 second clips.")
+        if youtube and length < MIN_CLIP_SECONDS * clip_count:
+            raise ValueError("Use a video with at least 30 seconds for each requested clip.")
         if not 12 <= length <= max_duration:
             maximum = "3 hours" if max_duration == PUBLIC_MAX_DURATION else f"{max_duration // 60} minutes"
             raise ValueError(f"Choose a video between 12 seconds and {maximum}.")
         update(job_id, progress=26, message="Measuring motion and audio activity")
-        seconds = min(MAX_CLIP_SECONDS, int(length // HIGHLIGHT_COUNT)) if public and length >= MIN_SOURCE_SECONDS else None
+        seconds = min(MAX_CLIP_SECONDS, int(length // clip_count)) if public and length >= MIN_CLIP_SECONDS * clip_count else None
         picks = select_highlights(audio_energy(source, length), motion_energy(source, length),
-                                  length, count=HIGHLIGHT_COUNT, clip_seconds=seconds)
+                                  length, count=clip_count, clip_seconds=seconds)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
             render(source, folder / name, clip["start"], clip["end"], template, i, caption_text, caption_font)
             prefix = "/api/public/jobs" if public else "/api/jobs"
             clips.append({**clip, "number": i, "url": f"{prefix}/{job_id}/files/{name}"})
-            update(job_id, progress=min(95, 28 + 13 * i), message=f"Rendering highlight {i} of 5", clips=list(clips))
-        update(job_id, status="done", progress=100, message="Five clips ready — choose your favorites", clips=clips)
+            update(job_id, progress=min(95, 28 + int(67 * i / clip_count)), message=f"Rendering highlight {i} of {clip_count}", clips=list(clips))
+        update(job_id, status="done", progress=100, message=f"{clip_count} clips ready", clips=clips)
     except ValueError as error:
         update(job_id, status="error", message=str(error), clips=[])
     except Exception:
@@ -499,7 +508,7 @@ async def create_public_job(
     url: str=Form(default=""), template: str=Form(default="neon"),
     captions: bool=Form(default=False), caption_text: str=Form(default=""),
     caption_font: str=Form(default="bebasneue"),
-    rights: bool=Form(default=False)
+    rights: bool=Form(default=False), clip_count: int=Form(default=5, ge=1, le=5)
 ):
     ip = check_public_trial(request)
     if not rights:
@@ -565,7 +574,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True),
+            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True,clip_count),
         ).start()
         accepted = True
         return {"job_id":job_id}

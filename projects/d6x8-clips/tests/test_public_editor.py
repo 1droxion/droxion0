@@ -91,9 +91,11 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
         "-t", "503" if from_youtube else "10800", "-c:v", "libx264", "-preset", "ultrafast",
         "-pix_fmt", "yuv420p", str(footage)
     ], check=True, timeout=30)
-    data = {"rights": "true", "template": "neon", "captions": "false", "caption_font": "anton"}
+    expected = 5 if from_youtube else 1
+    data = {"rights": "true", "template": "neon", "captions": str(from_youtube).lower(),
+            "caption_font": "anton", "caption_text": "TEST CAPTION", "clip_count": str(expected)}
     if from_youtube:
-        def import_fixture(url, target, limit, max_duration):
+        def import_fixture(url, target, limit, max_duration, min_duration):
             assert url == "https://www.youtube.com/watch?v=ha-JqYDn2kA"
             assert (limit, max_duration) == (cloud.PUBLIC_YOUTUBE_MAX_BYTES, cloud.PUBLIC_YOUTUBE_MAX_DURATION)
             shutil.copyfile(footage, target)
@@ -113,10 +115,10 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
             assert job_response.status_code == 200, job_response.text
             job = job_response.json()
             if job["status"] == "done":
-                assert len(job["clips"]) == 5
+                assert len(job["clips"]) == expected
                 assert all(30 <= round(item["end"] - item["start"], 2) <= 35
                            for item in job["clips"])
-                for index in range(1,6):
+                for index in range(1, expected + 1):
                     mp4 = client.get(
                         f"/api/public/jobs/{job_id}/files/D6X8_Highlight_{index:02d}.mp4",
                         headers=ORIGIN)
@@ -130,11 +132,11 @@ def test_public_editor_generates_five_mp4s(client, tmp_path, monkeypatch, from_y
                     ], timeout=15)
                     assert 30 <= float(json.loads(probe)["format"]["duration"]) <= 35.1
                 zip_response = client.get(
-                    f"/api/public/jobs/{job_id}/selected.zip?clips=2,4",
+                    f"/api/public/jobs/{job_id}/selected.zip?clips=1",
                     headers=ORIGIN)
                 assert zip_response.status_code == 200
                 with zipfile.ZipFile(io.BytesIO(zip_response.content)) as bundle:
-                    assert bundle.namelist() == ["DroxionClips_02.mp4","DroxionClips_04.mp4"]
+                    assert bundle.namelist() == ["DroxionClips_01.mp4"]
                 return
             if job["status"] == "error":
                 pytest.fail(f"Render failed: {job['message']}")

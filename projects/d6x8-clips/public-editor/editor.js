@@ -27,8 +27,8 @@ function updateSelection(){
   count.textContent=chosen.length+" selected";
   download.disabled=chosen.length===0;
 }
-function showClips(items){
-  if(!Array.isArray(items)||items.length!==5)throw Error("Processing did not return five clips.");
+function showClips(items,expected){
+  if(!Array.isArray(items)||items.length!==expected)throw Error("Processing returned an unexpected number of clips.");
   cards.replaceChildren();
   clips=items;
   for(const clip of clips){
@@ -70,6 +70,8 @@ async function run(){
   const body=new FormData();
   if(video)body.append("video",video);
   if(link)body.append("url",link);
+  const requested=Number($("clipCount").value);
+  body.append("clip_count",String(requested));
   body.append("template",$("clipStyle").value);
   body.append("captions",String(captions.checked));
   body.append("caption_text",captions.checked?text.value.trim():"");
@@ -84,8 +86,8 @@ async function run(){
     notice(state.message||"Generating highlights…",state.progress||10);
     if(state.status==="error")throw Error(state.message||"This video could not be processed.");
     if(state.status==="done"){
-      showClips(state.clips);
-      notice("Five highlights generated. Select your favorites below.",100);
+      showClips(state.clips,requested);
+      notice(requested===1 ? "Your clip is ready." : requested+" clips are ready. Select your favorites below.",100);
       return;
     }
   }
@@ -95,10 +97,25 @@ form.addEventListener("submit",async e=>{
   e.preventDefault();
   submit.disabled=true;
   try{await run();}
-  catch(err){notice(err.message||"Unable to create clips.",0,true);}
+  catch(err){
+    const linkOnly=youtube(url.value.trim())&&!file.files.length;
+    notice((err.message||"Unable to create clips.")+(linkOnly?" Upload the original recording to retry with these settings.":""),0,true);
+    if(linkOnly){
+      const retry=document.createElement("button");
+      retry.type="button";retry.className="file-cta";retry.textContent="Upload Video";
+      retry.addEventListener("click",()=>file.click());
+      statusText.append(" ",retry);
+    }
+  }
   finally{submit.disabled=false;}
 });
-captions.addEventListener("change",()=>{captionWrap.hidden=!captions.checked;text.required=captions.checked;});
+function updateCaptions(){
+  captionWrap.hidden=!captions.checked;
+  $("captionFontWrap").hidden=!captions.checked;
+  text.required=captions.checked;
+}
+captions.addEventListener("change",updateCaptions);
+updateCaptions();
 file.addEventListener("change",()=>{
   fileName.textContent=file.files[0]?.name||"No video selected";
   if(file.files[0]&&!youtube(url.value.trim()))url.value="";
@@ -106,8 +123,8 @@ file.addEventListener("change",()=>{
 url.addEventListener("input",()=>{
   if(url.value.trim()&&!youtube(url.value.trim())){file.value="";fileName.textContent="No video selected";}
   $("sourceHelp").textContent=youtube(url.value.trim())
-    ?"YouTube watch links are in beta. Upload the recording or paste a direct video file link."
-    :"Paste a direct HTTPS MP4/MOV link or upload a recording.";
+    ?"YouTube link detected. If the import is blocked, upload your original recording."
+    :"Paste a YouTube or direct video file link, or upload a recording.";
 });
 selectAll.addEventListener("click",()=>{
   for(const box of cards.querySelectorAll('input[type="checkbox"]'))box.checked=true;

@@ -62,26 +62,29 @@
 <section id="studio" class="studio public-studio" aria-labelledby="editor-title">
   <div class="public-beta-card paste-editor">
     <div class="beta-brow">DroxionClips · Create your clips</div>
-    <h2 id="editor-title">Paste your video link. Get 5 clips.</h2>
-    <p>Paste a direct HTTPS MP4/MOV file link or upload your recording. Create five vertical highlights, each 30–35 seconds for recordings of 2:30 or longer. Preview all five highlights and download only the ones you like.</p>
+    <h2 id="editor-title">Turn your video into clips.</h2>
+    <p>Paste a YouTube link or direct video file link, or upload your recording. Choose 1–5 vertical highlights. Each clip is 30–35 seconds when the source is long enough. Preview all five highlights and download only the ones you like.</p>
     <form id="clipForm" class="clip-form">
       <label class="editor-label" for="sourceUrl">Video link</label>
       <div class="paste-row">
-        <input id="sourceUrl" type="url" inputmode="url" placeholder="Paste a direct video file link" autocomplete="off">
-        <button type="submit" id="startClipping" class="cta">Create 5 Clips →</button>
+        <input id="sourceUrl" type="url" inputmode="url" placeholder="Paste a YouTube or direct video file link" autocomplete="off">
+        <button type="submit" id="startClipping" class="cta">Start →</button>
       </div>
       <div class="source-options">
         <label for="videoFile" class="file-cta">Or upload an MP4 recording</label>
         <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm">
         <span id="fileName">No video selected</span>
       </div>
-      <p id="sourceHelp" class="source-help">Paste a direct HTTPS MP4/MOV link or upload a recording.</p>
+      <p id="sourceHelp" class="source-help">Paste a YouTube watch link, a direct video file link, or upload a recording.</p>
       <div class="clip-options">
+        <label>Number of clips
+          <select id="clipCount"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option></select>
+        </label>
         <label>Clip style
           <select id="clipStyle"><option value="neon">Neon Rush</option><option value="electric">Electric</option><option value="fire">Fire Mode</option><option value="royal">Royal</option><option value="clean">Clean Cut</option></select>
         </label>
         <label class="inline-caption" for="captionsOn"><input type="checkbox" id="captionsOn"> Add manual caption</label>
-        <label>Font
+        <label id="captionFontWrap" hidden>Font
           <select id="clipFont"><option value="bebasneue">Bebas Neue</option><option value="montserrat">Montserrat</option><option value="poppins">Poppins</option><option value="oswald">Oswald</option><option value="anton">Anton</option></select>
         </label>
         <label id="captionTextWrap" hidden>Caption text
@@ -95,7 +98,7 @@
       <p id="statusText">Preparing your clips…</p><progress id="clipProgress" max="100" value="0"></progress>
     </div>
     <section id="clipResults" class="clip-results" hidden aria-labelledby="clipResultsTitle">
-      <h3 id="clipResultsTitle">Your 5 clips are ready</h3>
+      <h3 id="clipResultsTitle">Your clips are ready</h3>
       <div id="clipCards" class="clip-cards"></div>
       <div class="download-actions">
         <button id="selectAllClips" type="button" class="beta-secondary">Select all 5</button>
