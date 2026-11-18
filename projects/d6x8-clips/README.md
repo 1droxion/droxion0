@@ -81,3 +81,18 @@ Open `/long-clips` on the web editor service when the public trial is enabled.
 - Optional captions burn in the single line and font that you choose. Automatic transcription is separate.
 - YouTube watch links require the experimental `DROXIONCLIPS_YOUTUBE_ENABLED=1` flag and a compatible upstream stream. Keep the flag off when upstream downloads fail.
 - The public queue accepts one active render per process. Existing daily public-trial job limits apply.
+
+## Private Windows clip helper
+
+Double-click `START_WINDOWS_CLIP_HELPER.bat` with Python 3 installed. Confirm you
+have permission, paste a YouTube link or local recording path, and choose 1–5
+clips. Leave the caption blank to disable it. The helper submits the recording
+to the existing online editor and saves the finished MP4s under
+`Downloads\DroxionClips` by default.
+
+The YouTube path uses the PC's existing yt-dlp and FFmpeg installation. If FFmpeg
+is outside PATH, run from PowerShell with
+`.\START_WINDOWS_CLIP_HELPER.bat --ffmpeg-location "C:\ffmpeg\bin"`.
+If YouTube denies the local download, run the helper again with the original
+MP4 path. A downloaded source is kept in the printed job folder for retry.
+The online editor's duration, file size and trial limits apply.
