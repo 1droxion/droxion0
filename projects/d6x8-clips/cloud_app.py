@@ -278,7 +278,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
     url = (url or "").strip()
     youtube = creator_video_reference(url) if url else None
     if youtube and not video:
-        raise HTTPException(400, "YouTube link recognized. Please upload your own recording from YouTube Studio or OBS.")
+        raise HTTPException(400, "YouTube link recognized. Please upload your original recording from YouTube Studio or OBS.")
     if not youtube and bool(video) == bool(url):
         raise HTTPException(400, "Choose a video upload or a direct public HTTPS MP4 file link.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
