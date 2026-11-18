@@ -71,3 +71,53 @@ def test_public_disabled_by_default(client,monkeypatch):
     response=client.post("/api/public/jobs",
         data={"rights":"true","url":"https://example.com/game.mp4"},headers=ORIGIN)
     assert response.status_code == 503
+
+
+def test_public_upload_generates_five_mp4s_end_to_end(client, tmp_path):
+    """Actual form upload, background job, rendered outputs and selected ZIP."""
+    import shutil
+    import subprocess
+    import zipfile
+    import io
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+        pytest.skip("FFmpeg required")
+    footage = tmp_path / "test.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-v", "error",
+        "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=22050",
+        "-t", "12", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", str(footage)
+    ], check=True, timeout=30)
+    response = client.post("/api/public/jobs", headers=ORIGIN,
+        data={"rights":"true","template":"neon","captions":"false","caption_font":"anton"},
+        files={"video":("test.mp4", footage.read_bytes(), "video/mp4")})
+    assert response.status_code == 200, response.text
+    job_id = response.json()["job_id"]
+    deadline = time.monotonic() + 170
+    try:
+        while time.monotonic() < deadline:
+            job_response = client.get(f"/api/public/jobs/{job_id}", headers=ORIGIN)
+            assert job_response.status_code == 200, job_response.text
+            job = job_response.json()
+            if job["status"] == "done":
+                assert len(job["clips"]) == 5
+                for index in range(1,6):
+                    mp4 = client.get(
+                        f"/api/public/jobs/{job_id}/files/D6X8_Highlight_{index:02d}.mp4",
+                        headers=ORIGIN)
+                    assert mp4.status_code == 200
+                    assert len(mp4.content) > 1000
+                zip_response = client.get(
+                    f"/api/public/jobs/{job_id}/selected.zip?clips=2,4",
+                    headers=ORIGIN)
+                assert zip_response.status_code == 200
+                with zipfile.ZipFile(io.BytesIO(zip_response.content)) as bundle:
+                    assert bundle.namelist() == ["DroxionClips_02.mp4","DroxionClips_04.mp4"]
+                return
+            if job["status"] == "error":
+                pytest.fail(f"Render failed: {job['message']}")
+            time.sleep(1)
+        pytest.fail("Public render did not complete")
+    finally:
+        cloud.jobs.pop(job_id, None)
