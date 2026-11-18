@@ -54,3 +54,19 @@ play the first export, and download its MP4.
 The watcher processes **completed local files only**, not an active live stream. A long, actively growing single recording will not be processed until it stops changing. Use OBS Replay Buffer or short recording segments for during-stream highlights. The app can process only one video job at a time. Keep the server running on your computer and do not expose it publicly. New exports are removed according to the existing 24-hour cleanup policy.
 
 YouTube URLs are reference metadata, not audiovisual input. To obtain footage you own, use the original local OBS file or YouTube Studio's creator download options where available. Don't download other people's videos without appropriate rights.
+
+## Private online web beta (separate from the static public landing site)
+
+The web beta is served by `cloud_app:app` and is **not a public paid service**. It is designed for one beta tester at a time and must be protected with a strong password.
+
+- 120 MB uploaded video maximum, 12 seconds–10 minutes maximum duration.
+- Five actual FFmpeg 9:16 MP4 highlight candidates, five styles, optional manually entered caption and licensed fonts.
+- Preview and download each clip or check boxes 1–5 and download only those selected as a ZIP.
+- Supports uploaded gameplay files and direct public HTTPS MP4/MOV links. YouTube video, Shorts and live links are reference metadata **only**: supply your own original recording. No YouTube stream scraping or downloads.
+- No cloud-based OBS folder access; OBS watcher remains local-only.
+- One render at a time; generated files and memory are ephemeral on Render. No subscription or customer accounts.
+- Access requires `DROXIONCLIPS_BETA_PASSWORD` (14+ characters) and `DROXIONCLIPS_SESSION_SECRET` (32+ random characters).
+- To run directly, `uvicorn cloud_app:app --host 127.0.0.1 --port 8773` after installing FFmpeg and Python requirements. Deployment uses `Dockerfile.web`.
+- Original recording is deleted when rendering ends. Generated clips are kept temporarily and expire on cleanup; download your clips promptly.
+
+Do **not** move `droxion.com`, `clips.droxion.com` or customer billing to this backend yet. The web beta needs traffic controls, monitoring, durable job storage, scalable queues, and a proper customer authentication system before public launch.
