@@ -76,17 +76,46 @@ def require_auth(request: Request):
     if not authorized(request):
         raise HTTPException(401, "Sign in to the private DroxionClips beta first.")
 
+PUBLIC_ORIGIN = os.environ.get(
+    "DROXIONCLIPS_PUBLIC_ORIGIN", "https://droxionclips-editor-beta.onrender.com"
+).rstrip("/")
+
 def require_same_origin(request: Request):
-    """Browser CSRF defense; SameSite cookie and same-host Origin required."""
-    origin = request.headers.get("origin")
-    if origin:
-        parsed = urlparse(origin)
-        if parsed.hostname != request.url.hostname or parsed.port not in (None, request.url.port):
-            raise HTTPException(403, "Open the DroxionClips studio directly to submit.")
-        if parsed.scheme not in ("https", "http"):
-            raise HTTPException(403, "Invalid request origin.")
-    if request.headers.get("sec-fetch-site") == "cross-site":
+    """Reject cross-site writes, using the browser-facing origin behind Render.
+
+    A proxy can rewrite ASGI's server/request URL, so comparing Origin to
+    request.url.hostname can reject legitimate logins. Instead require the
+    exact configured public HTTPS origin. Permit local/test origins only when
+    the Host header is a loopback or test host.
+    """
+    if request.headers.get("sec-fetch-site", "").lower() == "cross-site":
         raise HTTPException(403, "Cross-site requests are not allowed.")
+    origin = request.headers.get("origin")
+    if not origin:
+        return
+    try:
+        parsed = urlparse(origin)
+        configured = urlparse(PUBLIC_ORIGIN)
+        host_header = request.headers.get("host", "")
+        request_host = urlparse("//" + host_header).hostname
+        if (parsed.username or parsed.password or parsed.path not in ("", "/")
+                or parsed.query or parsed.fragment or not parsed.hostname):
+            raise ValueError("Invalid origin.")
+        public_ok = (
+            parsed.scheme == "https"
+            and parsed.hostname.lower() == configured.hostname.lower()
+            and parsed.port in (None, 443)
+        )
+        local_ok = (
+            request_host in ("testserver", "localhost", "127.0.0.1")
+            and parsed.hostname.lower() == request_host
+            and parsed.scheme in ("http", "https")
+            and parsed.port in (None, 80, 443, request.url.port)
+        )
+    except (ValueError, AttributeError):
+        public_ok = local_ok = False
+    if not (public_ok or local_ok):
+        raise HTTPException(403, "Open the DroxionClips studio directly to submit.")
 
 def clean_expired():
     deadline = time.time() - RETENTION
