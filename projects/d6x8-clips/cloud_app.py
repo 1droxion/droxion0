@@ -243,6 +243,11 @@ def homepage(request: Request):
     # OBS can only watch a folder on the creator's own computer.
     html = re.sub(r'<section id="obs".*?</section>', "", html, count=1, flags=re.S)
     html = html.replace('/static/studio.js', '/static/cloud.js')
+    html = html.replace('<link rel="stylesheet" href="/static/studio.css">',
+                        '<link rel="stylesheet" href="/static/studio.css">\\n<link rel="stylesheet" href="/static/cloud.css">')
+    html = html.replace('Direct public HTTPS MP4/MOV or your own YouTube video/live link. For YouTube, also upload the original recording — it is not downloaded from YouTube.',
+        'Direct public HTTPS MP4/MOV file URL (auto-imported), or your own YouTube video/live link alongside your original uploaded recording.')
+    html = html.replace('</form>', '<label class="rights-consent" for="rights"><input id="rights" type="checkbox" required> I own this recording or have permission to process it.</label></form>', 1)
     html = html.replace('850 MB max', '120 MB max')
     html = html.replace('No AI · Five clips · Real exports', 'Private beta · Five clips · Real exports')
     html = html.replace("</main>", '<div class="web-note">Secure private beta · Files are deleted after processing · 120 MB / 10 min maximum · YouTube watch links require your original file</div></main>')
