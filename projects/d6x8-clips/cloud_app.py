@@ -220,15 +220,24 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
 
 @site.middleware("http")
 async def limits_and_headers(request: Request, call_next):
+    early = None
     if request.method == "POST" and request.url.path in ("/api/jobs", "/api/public/jobs"):
-        if request.url.path == "/api/jobs" and not authorized(request):
-            return JSONResponse({"detail": "Sign in to the private beta first."}, status_code=401)
-        if request.headers.get("content-length", "").isdigit():
-            if int(request.headers["content-length"]) > (PUBLIC_MAX_BYTES if request.url.path.startswith("/api/public/") else MAX_BYTES) + 1024 * 1024:
-                return JSONResponse({"detail": "The file exceeds the upload limit."}, status_code=413)
+        is_public = request.url.path.startswith("/api/public/")
+        if not is_public and not authorized(request):
+            early = JSONResponse({"detail": "Sign in to the private beta first."}, status_code=401)
+        elif request.headers.get("content-length", "").isdigit():
+            maximum = PUBLIC_MAX_BYTES if is_public else MAX_BYTES
+            if int(request.headers["content-length"]) > maximum + 1024 * 1024:
+                early = JSONResponse({"detail": "The file exceeds the upload limit."}, status_code=413)
         else:
-            return JSONResponse({"detail": "Upload size is required."}, status_code=411)
-    response = await call_next(request)
+            early = JSONResponse({"detail": "Upload size is required."}, status_code=411)
+    response = early if early is not None else await call_next(request)
+    # Early rejection skips CORSMiddleware; return readable errors to our editor.
+    if early is not None and request.url.path.startswith("/api/public/"):
+        origin = request.headers.get("origin")
+        if origin in PUBLIC_ORIGINS:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Vary"] = "Origin"
     response.headers["Cache-Control"] = "private, no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
