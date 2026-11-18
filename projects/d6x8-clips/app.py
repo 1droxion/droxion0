@@ -1,4 +1,4 @@
-"""D6X8 Clips: local-only FastAPI app. No accounts, AI models or subscriptions."""
+"""DroxionClips: local-only highlight tool, no customer accounts or billing."""
 import ipaddress
 import json
 import math
@@ -28,13 +28,20 @@ THEMES = {
     "royal": ("0xDAAE6B", "ROYAL"),
     "clean": ("0xFFFFFF", "CLEAN CUT"),
 }
-app = FastAPI(title="D6X8 Clips", docs_url=None, redoc_url=None)
+CAPTION_FONTS = {
+    "impact": "Impact",
+    "arial": "Arial",
+    "trebuchet": "Trebuchet MS",
+    "georgia": "Georgia",
+    "consolas": "Consolas",
+}
+app = FastAPI(title="DroxionClips", docs_url=None, redoc_url=None)
 jobs = {}
 lock = threading.Lock()
 
-def cmd(args, timeout=900):
+def cmd(args, timeout=900, cwd=None):
     return subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          timeout=timeout, check=True).stdout
+                          timeout=timeout, check=True, cwd=cwd).stdout
 
 def duration_of(path):
     result = cmd(["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -114,23 +121,37 @@ def select_highlights(audio, motion, duration, count=5):
              for a,b in selected[:count]]
     return sorted(found,key=lambda x:-x["score"])
 
-def render(source, target, start, end, theme, index):
+def render(source, target, start, end, theme, index, caption_text="", caption_font="impact"):
+    """Render a 9:16 video with optional manually entered text burned into each clip."""
     color, label = THEMES[theme]
+    overlays = [
+        f"drawbox=x=0:y=0:w=iw:h=15:color={color}:t=fill",
+        f"drawbox=x=0:y=1265:w=iw:h=15:color={color}:t=fill",
+        f"drawtext=text='{label}':fontsize=35:fontcolor=white:x=44:y=142",
+        f"drawtext=text='HIGHLIGHT {index:02d}':fontsize=30:fontcolor=white:x=40:y=1156",
+    ]
+    if caption_text:
+        # textfile avoids injecting user-provided text into FFmpeg's filter syntax.
+        (target.parent / "caption.txt").write_text(caption_text, encoding="utf-8")
+        family = CAPTION_FONTS[caption_font]
+        overlays.append(
+            f"drawtext=font='{family}':textfile=caption.txt:expansion=none:"
+            "fontsize=57:fontcolor=white:borderw=3:bordercolor=black:"
+            "box=1:boxcolor=black@0.65:boxborderw=16:"
+            "x=(w-text_w)/2:y=1040"
+        )
     filt = (
         "[0:v]split=2[bg][fg];"
         "[bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=25:3[blur];"
         "[fg]scale=704:880:force_original_aspect_ratio=decrease[game];"
         "[blur][game]overlay=(W-w)/2:(H-h)/2[stage];"
-        f"[stage]drawbox=x=0:y=0:w=iw:h=15:color={color}:t=fill,"
-        f"drawbox=x=0:y=1265:w=iw:h=15:color={color}:t=fill,"
-        f"drawtext=text='{label}':fontsize=35:fontcolor=white:x=44:y=142,"
-        f"drawtext=text='HIGHLIGHT {index:02d}':fontsize=30:fontcolor=white:x=40:y=1156[v]"
+        "[stage]" + ",".join(overlays) + "[v]"
     )
     cmd(["ffmpeg", "-y", "-v", "error", "-ss", str(start), "-i", str(source),
          "-t", str(max(1,end-start)), "-filter_complex", filt, "-map", "[v]",
          "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "24",
          "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "128k",
-         "-movflags", "+faststart", str(target)])
+         "-movflags", "+faststart", str(target)], cwd=target.parent)
 
 def is_public_https_mp4(url):
     u = urlparse(url)
@@ -164,7 +185,7 @@ def update(job_id, **fields):
     with lock:
         jobs[job_id].update(fields)
 
-def process(job_id, source, link, theme):
+def process(job_id, source, link, theme, caption_text="", caption_font="impact"):
     folder=source.parent
     try:
         update(job_id,status="processing",message="Reading video",progress=10)
@@ -180,7 +201,7 @@ def process(job_id, source, link, theme):
         clips=[]
         for i,clip in enumerate(picks,1):
             filename=f"D6X8_Highlight_{i:02d}.mp4"
-            render(source,folder/filename,clip["start"],clip["end"],theme,i)
+            render(source,folder/filename,clip["start"],clip["end"],theme,i,caption_text,caption_font)
             clips.append({**clip,"number":i,"url":f"/api/jobs/{job_id}/files/{filename}"})
             update(job_id,message=f"Rendering {i} of 5",progress=30+i*13,clips=list(clips))
         update(job_id,status="done",progress=100,message="Five clips ready",clips=clips)
@@ -191,11 +212,21 @@ def process(job_id, source, link, theme):
 
 @app.post("/api/jobs")
 async def new_job(video: UploadFile | None=File(default=None),
-                  url: str | None=Form(default=None),template: str=Form(default="neon")):
+                  url: str | None=Form(default=None), template: str=Form(default="neon"),
+                  captions: bool=Form(default=False), caption_text: str=Form(default=""),
+                  caption_font: str=Form(default="impact")):
     if bool(video)==bool(url and url.strip()):
         raise HTTPException(400,"Choose a file or direct MP4 link.")
     if template not in THEMES:
         raise HTTPException(400,"Invalid template.")
+    if caption_font not in CAPTION_FONTS:
+        raise HTTPException(400,"Invalid caption font.")
+    if captions:
+        caption_text = caption_text.strip()
+        if not caption_text or len(caption_text) > 65 or len(caption_text.splitlines()) != 1:
+            raise HTTPException(400,"Enter one caption line (1–65 characters).")
+    else:
+        caption_text = ""
     job_id=uuid.uuid4().hex[:12]
     folder=WORKSPACE/job_id
     folder.mkdir(parents=True,exist_ok=True)
@@ -219,7 +250,7 @@ async def new_job(video: UploadFile | None=File(default=None),
             await video.close()
     with lock:
         jobs[job_id]={"status":"queued","progress":0,"message":"Queued","clips":[]}
-    threading.Thread(target=process,args=(job_id,source,url.strip() if url else None,template),daemon=True).start()
+    threading.Thread(target=process,args=(job_id,source,url.strip() if url else None,template,caption_text,caption_font),daemon=True).start()
     return {"job_id":job_id}
 
 @app.get("/api/jobs/{job_id}")

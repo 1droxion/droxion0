@@ -45,7 +45,7 @@ def test_five_templates_and_health():
     }
     page = client.get("/")
     assert page.status_code == 200
-    assert "GENERATE 5 HIGHLIGHTS" in page.text
+    assert "Generate 5 Clips" in page.text
 
 def test_local_urls_and_video_watch_pages_are_rejected():
     for url in (
@@ -77,3 +77,45 @@ def test_renders_a_real_vertical_mp4(tmp_path: Path):
         "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", str(target),
     ], capture_output=True, text=True, check=True, timeout=30)
     assert dimensions.stdout.strip() == "720x1280"
+
+def test_droxionclips_responsive_ui_and_caption_controls():
+    client = TestClient(app)
+    page = client.get("/")
+    assert page.status_code == 200
+    assert 'DroxionClips' in page.text
+    assert 'name="viewport"' in page.text
+    assert 'Caption font' in page.text
+    assert 'id="capOn"' in page.text
+    assert 'id="capOff"' in page.text
+    assert 'aria-live="polite"' in page.text
+    assert 'These are examples, not earnings testimonials' in page.text
+    assert 'No real customer reviews' in page.text
+
+
+def test_invalid_caption_settings_are_rejected():
+    from io import BytesIO
+    client = TestClient(app)
+    def submit(**data):
+        return client.post("/api/jobs", files={
+            "video": ("example.mp4", BytesIO(b"not a video"), "video/mp4")
+        }, data={"template": "neon", **data})
+    assert submit(captions="true", caption_font="unknown", caption_text="Hello").status_code == 400
+    assert submit(captions="true", caption_font="impact", caption_text="").status_code == 400
+    assert submit(captions="true", caption_font="impact", caption_text="X" * 66).status_code == 400
+
+
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None,
+    reason="FFmpeg is required for caption overlay test",
+)
+def test_renders_manual_caption_and_font(tmp_path: Path):
+    source = tmp_path / "gameplay.mp4"
+    target = tmp_path / "captioned.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+        "-i", "testsrc2=size=160x90:rate=10", "-t", "3",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(source)
+    ], check=True, timeout=60)
+    render(source, target, 0, 2, "electric", 1, "CLUTCH: 5/5!", "arial")
+    assert target.exists() and target.stat().st_size > 1000
+    assert (tmp_path / "caption.txt").read_text(encoding="utf-8") == "CLUTCH: 5/5!"
