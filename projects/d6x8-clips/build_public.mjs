@@ -14,10 +14,10 @@ const studio = [
 '<h2 id="beta-heading">Turn your gameplay into five highlight clips.</h2>',
 '<p>Try the Windows creator studio: turn recordings into five vertical MP4 highlight candidates, apply styles, and add your own captions. The cloud clipping service is not available yet.</p>',
 '<div class="beta-buttons">',
-'<a class="cta" href="https://github.com/1droxion/droxion0/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer">Download Windows beta ↗</a>',
-'<a class="beta-secondary" href="https://github.com/1droxion/droxion0/tree/main/projects/d6x8-clips" target="_blank" rel="noopener noreferrer">Setup instructions ↗</a>',
+'<a class="cta" href="https://droxionclips-editor-beta.onrender.com/" target="_blank" rel="noopener noreferrer">Open Online Editor (Private Beta) ↗</a>',
+'<a class="beta-secondary" href="https://github.com/1droxion/droxion0/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer">Download Windows beta ↗</a>',
 '</div>',
-'<p class="beta-note">Open <code>projects/d6x8-clips</code> inside the downloaded ZIP and follow <code>README.md</code>. Requires Python and FFmpeg. Video processing happens on your computer. No payment or subscription is collected.</p>',
+'<p class="beta-note">The online editor is a private password-protected beta for testing your own footage (up to 120 MB and 10 minutes). Choose captions and styles, then select any of five clips. YouTube watch links require your original recording. No payments are collected.</p>',
 '</div></section>'
 ].join('');
 const obs = [

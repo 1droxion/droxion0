@@ -16,7 +16,8 @@ def test_public_build_is_safe_and_complete():
     assert 'Download Windows beta' in page
     assert 'id="form"' not in page
     assert 'id="obsStart"' not in page
-    assert 'No payment or subscription is collected.' in page
+    assert 'No payments are collected.' in page
+    assert 'Open Online Editor (Private Beta)' in page
     assert (output/"static"/"hero.webp").stat().st_size > 0
     assert (output/"static"/"studio.css").stat().st_size > 0
     assert (output/"static"/"public.js").stat().st_size > 0
