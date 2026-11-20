@@ -294,7 +294,7 @@ def health():
 @site.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     if authorized(request):
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/private", status_code=303)
     return HTMLResponse(signin_html())
 
 @site.post("/login")
@@ -313,7 +313,7 @@ async def login_submit(request: Request, password: str=Form(...)):
         login_attempts.pop(ip, None)
     stamp = str(int(time.time()))
     signature = hmac.new(SESSION_SECRET.encode(), stamp.encode(), hashlib.sha256).hexdigest()
-    response = RedirectResponse("/", status_code=303)
+    response = RedirectResponse("/private", status_code=303)
     response.set_cookie(COOKIE, stamp+"."+signature, max_age=8*3600,
                         httponly=True, secure=True, samesite="strict", path="/")
     return response
@@ -340,8 +340,16 @@ site.mount("/long-clips-assets", StaticFiles(directory=HERE / "public-editor"),
 
 @site.get("/", response_class=HTMLResponse)
 def homepage(request: Request):
+    """Serve the rate-limited public editor without an account."""
+    return editor_page(public=True)
+
+@site.get("/private", response_class=HTMLResponse)
+def private_homepage(request: Request):
     if not authorized(request):
         return RedirectResponse("/login", status_code=303)
+    return editor_page(public=False)
+
+def editor_page(public: bool):
     html = (HERE / "index.html").read_text(encoding="utf-8")
     # OBS can only watch a folder on the creator's own computer.
     html = re.sub(r'<section id="obs".*?</section>', "", html, count=1, flags=re.S)
@@ -352,6 +360,10 @@ def homepage(request: Request):
         'Paste your authorized YouTube video, completed live replay, or public MP4/MOV URL. YouTube may sometimes block cloud imports.')
     html = html.replace('</form>', '<label class="rights-consent" for="rights"><input id="rights" type="checkbox" required> I own this recording or have permission to process it.</label></form>', 1)
     html = html.replace('850 MB max', '120 MB max')
+    if public:
+        html = html.replace('<body id="home">', '<body id="home" data-public-editor="true">')
+        html = html.replace('Private beta · Files are deleted after processing', 'Public trial · Files are deleted after processing')
+        html = html.replace('Private beta · Five clips · Real exports', 'Public trial · Up to five clips · Real exports')
     html = html.replace('No AI · Five clips · Real exports', 'Private beta · Five clips · Real exports')
     html = html.replace("</main>", '<div class="web-note">Private beta · Files are deleted after processing · 120 MB / 10 min limit · YouTube URLs may be blocked by YouTube; upload an MP4 as fallback</div></main>')
     return HTMLResponse(html)
