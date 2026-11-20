@@ -8,14 +8,17 @@ const clipCount = $('clipCount'), captionColor = $('captionColor')
 const preview = $('captionPreview'), form = $('form'), generate = $('generate')
 const results = $('results'), status = $('status'), message = $('message'), bar = $('bar')
 const mobileMenu = $('menu'), nav = $('nav')
+const publicEditor = document.body.dataset.publicEditor === 'true'
+const jobsBase = publicEditor ? '/api/public/jobs' : '/api/jobs'
+const uploadMax = publicEditor ? 1024**3 : 120*1024*1024
 let selectedFile = null, latestJob = null, currentClips = []
 const fonts = {bebasneue:'Bebas', montserrat:'Montserrat', poppins:'Poppins',
                oswald:'Oswald', anton:'Anton'}
 const selectFile = chosen => {
   selectedFile = chosen || null
   $('filename').textContent = selectedFile ? selectedFile.name : 'Upload Your Gameplay'
-  if (selectedFile && selectedFile.size > 120*1024*1024) {
-    show('For this web beta, upload a video smaller than 120 MB.',0,true)
+  if (selectedFile && selectedFile.size > uploadMax) {
+    show('The selected video exceeds the editor upload limit.',0,true)
   }
 }
 function updateCaption() {
@@ -80,7 +83,7 @@ function showClips(clips) {
   bundle.addEventListener('click',()=>{
     const nums=checks.filter(c=>c.checked).map(c=>c.value)
     if(!latestJob||!nums.length)return
-    safeOpen('/api/jobs/'+encodeURIComponent(latestJob)+'/selected.zip?clips='+nums.join(','),true)
+    safeOpen(jobsBase+'/'+encodeURIComponent(latestJob)+'/selected.zip?clips='+nums.join(','),true)
   })
   tools.append(heading,all,bundle,count)
   results.before(tools)
@@ -107,11 +110,11 @@ function showClips(clips) {
 }
 file.addEventListener('change',()=>{
   selectFile(file.files[0])
-  if(selectedFile && !isYouTube(url.value.trim()))url.value=''
+  if(selectedFile)url.value=''
 })
 url.addEventListener('input',()=>{
   // A YouTube reference may accompany an uploaded recording; direct MP4 is standalone.
-  if(url.value.trim()&&!isYouTube(url.value.trim())) {
+  if(url.value.trim()) {
     selectedFile=null;file.value='';selectFile(null)
   }
 })
@@ -136,7 +139,7 @@ form.addEventListener('submit',async e=>{
   e.preventDefault()
   const link=url.value.trim()
   if(!selectedFile&&!link){show('Upload your gameplay file or enter a supported direct media URL.',0,true);return}
-  if(selectedFile&&selectedFile.size>120*1024*1024){show('The web beta upload limit is 120 MB.',0,true);return}
+  if(selectedFile&&selectedFile.size>uploadMax){show('The file exceeds the editor upload limit.',0,true);return}
   if(caption.checked&&!captionText.value.trim()){show('Enter your caption or turn captions off.',0,true);return}
   if(!$('rights').checked){show('Confirm you own or have permission to process this recording.',0,true);return}
   clearResults();generate.disabled=true
@@ -152,13 +155,13 @@ form.addEventListener('submit',async e=>{
     body.append('caption_color',captionColor.value)
     body.append('clip_count',clipCount.value)
     body.append('rights','true')
-    const response=await fetch('/api/jobs',{method:'POST',body,credentials:'same-origin'})
+    const response=await fetch(jobsBase,{method:'POST',body,credentials:'same-origin'})
     const data=await response.json()
     if(!response.ok)throw Error(data.detail||'Unable to submit video')
     latestJob=data.job_id
     for(let attempt=0;attempt<420;attempt++){
       await new Promise(resolve=>setTimeout(resolve,1500))
-      const statusResponse=await fetch('/api/jobs/'+encodeURIComponent(latestJob),{credentials:'same-origin'})
+      const statusResponse=await fetch(jobsBase+'/'+encodeURIComponent(latestJob),{credentials:'same-origin'})
       if(statusResponse.status===401)throw Error('Your beta session expired. Refresh and log in.')
       if(!statusResponse.ok)throw Error('Unable to check processing status.')
       const state=await statusResponse.json()
