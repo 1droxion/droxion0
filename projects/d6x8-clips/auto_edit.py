@@ -52,7 +52,7 @@ def render_auto_edit(source: Path, target: Path, cuts, template: str,
                    auto_zoom=(cfg["zoom"] and i % 2 == 1))
             parts.append(part)
         # Only fixed server-generated filenames are written into this manifest.
-        manifest.write_text("".join(f"file '{part.name}'\\n" for part in parts), encoding="utf-8")
+        manifest.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
         result = subprocess.run(
             ["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "1",
              "-i", manifest.name, "-c", "copy", "-movflags", "+faststart", target.name],
