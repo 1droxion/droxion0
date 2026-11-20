@@ -58,6 +58,8 @@ function showClips(items,expected){
     cards.append(card);
   }
   results.hidden=false;
+  download.textContent=editMode.value==="auto"?"Download Edited MP4":"Download Selected Clips";
+  selectAll.hidden=editMode.value==="auto";
   updateSelection();
   results.scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -155,5 +157,9 @@ selectAll.addEventListener("click",()=>{
 download.addEventListener("click",()=>{
   const picks=selected();
   if(!job||!picks.length)return;
+  if(editMode.value==="auto" && clips[0]){
+    window.location.assign(API+clips[0].url+"?download=true");
+    return;
+  }
   window.location.assign(API+"/api/public/jobs/"+encodeURIComponent(job)+"/selected.zip?clips="+picks.join(","));
 });
