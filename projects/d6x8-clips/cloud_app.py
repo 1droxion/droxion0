@@ -19,6 +19,7 @@ import uuid
 import zipfile
 from pathlib import Path
 from urllib.parse import urlparse, urlunsplit
+import subprocess
 
 from fastapi import FastAPI, Form, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -186,25 +187,53 @@ def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
     finally:
         conn.close()
 
-def process(job_id, source, template, caption_text, caption_font, source_url, public=False):
+def download_youtube_limited(url: str, target: Path, public=False):
+    """Import authorized YouTube videos with strict duration and byte caps."""
+    reference = creator_video_reference(url)
+    if not reference:
+        raise ValueError("Use a valid YouTube video, Shorts, or finished live-video URL.")
+    max_bytes = PUBLIC_MAX_BYTES if public else MAX_BYTES
+    limit_seconds = PUBLIC_MAX_DURATION if public else MAX_DURATION
+    args = ["yt-dlp", "--no-playlist", "--no-config", "--no-progress",
+            "--no-warnings", "--socket-timeout", "20", "--retries", "1",
+            "--max-filesize", str(max_bytes),
+            "--match-filter", f"duration <= {limit_seconds}",
+            "-f", "b[ext=mp4]/b[height<=720]/b",
+            "--output", str(target), reference["watch_url"]]
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=150,
+                                cwd=target.parent, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        raise ValueError("YouTube import timed out or is unavailable. Upload your recording instead.")
+    if result.returncode != 0 or not target.exists():
+        raise ValueError("YouTube could not provide this video from our server (it may require sign-in, be live, private, or restricted). Upload the original file instead.")
+    if target.stat().st_size > max_bytes:
+        target.unlink(missing_ok=True)
+        raise ValueError("This video is too large for the online editor; upload a shorter recording.")
+
+
+def process(job_id, source, template, caption_text, caption_font, source_url, public=False, count=5, caption_color="#FFFFFF"):
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
         if source_url:
-            download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
+            if creator_video_reference(source_url):
+                download_youtube_limited(source_url, source, public)
+            else:
+                download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
         if not 12 <= length <= (PUBLIC_MAX_DURATION if public else MAX_DURATION):
             raise ValueError("Choose a recording between 12 seconds and " + ("5 minutes." if public else "10 minutes."))
         update(job_id, progress=26, message="Measuring motion and audio activity")
-        picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length)
+        picks = select_highlights(audio_energy(source, length), motion_energy(source, length), length, count=count)
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
-            render(source, folder / name, clip["start"], clip["end"], template, i, caption_text, caption_font)
+            render(source, folder / name, clip["start"], clip["end"], template, i, caption_text, caption_font, caption_color)
             prefix = "/api/public/jobs" if public else "/api/jobs"
             clips.append({**clip, "number": i, "url": f"{prefix}/{job_id}/files/{name}"})
-            update(job_id, progress=min(95, 28 + 13 * i), message=f"Rendering highlight {i} of 5", clips=list(clips))
-        update(job_id, status="done", progress=100, message="Five clips ready — choose your favorites", clips=clips)
+            update(job_id, progress=min(95, 28 + 13 * i), message=f"Rendering highlight {i} of {count}", clips=list(clips))
+        update(job_id, status="done", progress=100, message=f"{count} clips ready — choose your favorites", clips=clips)
     except ValueError as error:
         update(job_id, status="error", message=str(error), clips=[])
     except Exception:
@@ -322,6 +351,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                      url: str | None=Form(default=None), template: str=Form(default="neon"),
                      captions: bool=Form(default=False), caption_text: str=Form(default=""),
                      caption_font: str=Form(default="bebasneue"),
+                     clip_count: int=Form(default=5), caption_color: str=Form(default="#FFFFFF"),
                      rights: bool=Form(default=False)):
     require_auth(request)
     require_same_origin(request)
@@ -329,12 +359,12 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
         raise HTTPException(400, "Confirm you own or have permission to use this footage.")
     url = (url or "").strip()
     youtube = creator_video_reference(url) if url else None
-    if youtube and not video:
-        raise HTTPException(400, "YouTube link recognized. Please upload your original recording from YouTube Studio or OBS.")
-    if not youtube and bool(video) == bool(url):
+    if bool(video) == bool(url):
         raise HTTPException(400, "Choose a video upload or a direct public HTTPS MP4 file link.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
         raise HTTPException(400, "Choose a supported video style and font.")
+    if clip_count not in range(1, 6) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
+        raise HTTPException(400, "Choose 1–5 clips and a valid caption color.")
     caption_text = caption_text.strip() if captions else ""
     if captions and (not caption_text or len(caption_text)>65 or len(caption_text.splitlines())!=1):
         raise HTTPException(400, "Enter one caption line of up to 65 characters.")
@@ -369,7 +399,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                             "video_reference": youtube}
         worker = threading.Thread(target=process, daemon=True,
                                   args=(job_id,source,template,caption_text,caption_font,
-                                        "" if youtube else url))
+                                        url,False,clip_count,caption_color))
         worker.start()
         accepted = True
         return {"job_id": job_id}
@@ -471,6 +501,7 @@ async def create_public_job(
     url: str=Form(default=""), template: str=Form(default="neon"),
     captions: bool=Form(default=False), caption_text: str=Form(default=""),
     caption_font: str=Form(default="bebasneue"),
+    clip_count: int=Form(default=5), caption_color: str=Form(default="#FFFFFF"),
     rights: bool=Form(default=False)
 ):
     ip = check_public_trial(request)
@@ -478,18 +509,15 @@ async def create_public_job(
         raise HTTPException(400, "Confirm you own or have permission to use the footage.")
     url = (url or "").strip()
     yt = creator_video_reference(url) if url else None
-    if yt and not video:
-        raise HTTPException(
-            400, "YouTube watch/live links cannot be downloaded directly. "
-                 "Download your own recording from YouTube Studio, then upload that MP4."
-        )
-    if not yt and bool(video) == bool(url):
+    if bool(video) == bool(url):
         raise HTTPException(400, "Paste a direct HTTPS MP4/MOV file link, or upload your video.")
     if url and not yt and not direct_video_address(url):
         raise HTTPException(400, "That is not a direct downloadable MP4/MOV file link. "
                                  "YouTube watch links require an original recording.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
         raise HTTPException(400, "Select a supported clip style and caption font.")
+    if clip_count not in range(1,6) or not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
+        raise HTTPException(400, "Choose 1–5 clips and a valid caption color.")
     caption_text = caption_text.strip() if captions else ""
     if captions and (not caption_text or len(caption_text)>65 or len(caption_text.splitlines())!=1):
         raise HTTPException(400, "Enter one caption line of up to 65 characters.")
@@ -539,7 +567,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if yt else url,True),
+            args=(job_id,source,template,caption_text,caption_font,url,True,clip_count,caption_color),
         ).start()
         accepted = True
         return {"job_id":job_id}

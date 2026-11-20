@@ -158,9 +158,12 @@ def select_highlights(audio, motion, duration, count=5):
              for a,b in selected[:count]]
     return sorted(found,key=lambda x:-x["score"])
 
-def render(source, target, start, end, theme, index, caption_text="", caption_font="impact"):
+def render(source, target, start, end, theme, index, caption_text="", caption_font="impact", caption_color="#FFFFFF"):
     """Render a 9:16 video with optional manually entered text burned into each clip."""
     color, label = THEMES[theme]
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
+        raise ValueError("Invalid caption color.")
+    ff_color = "0x" + caption_color[1:]
     overlays = [
         f"drawbox=x=0:y=0:w=iw:h=15:color={color}:t=fill",
         f"drawbox=x=0:y=1265:w=iw:h=15:color={color}:t=fill",
@@ -181,7 +184,7 @@ def render(source, target, start, end, theme, index, caption_text="", caption_fo
         size = min(57, int(620 * 57 / max(1, font.getlength(caption_text))))
         overlays.append(
             "drawtext=fontfile=caption-font.ttf:textfile=caption.txt:expansion=none:"
-            f"fontsize={size}:fontcolor=white:borderw=3:bordercolor=black:"
+            f"fontsize={size}:fontcolor={ff_color}:borderw=3:bordercolor=black:"
             "box=1:boxcolor=black@0.65:boxborderw=16:"
             "x=(w-text_w)/2:y=1040"
         )
