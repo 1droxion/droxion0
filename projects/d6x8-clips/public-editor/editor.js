@@ -89,6 +89,7 @@ async function run(){
   body.append("captions",String(captions.checked));
   body.append("caption_text",captions.checked?text.value.trim():"");
   body.append("caption_font",$("clipFont").value);
+  body.append("caption_color",$("captionColor").value);
   body.append("rights","true");
   notice(video ? "Uploading your recording…" : youtube(link) ? "Starting YouTube import…" : "Importing the video file…",5);
   const jobData=await responseJSON(await fetch(API+"/api/public/jobs",{method:"POST",body,mode:"cors"}));
@@ -130,6 +131,7 @@ form.addEventListener("submit",async e=>{
 function updateCaptions(){
   captionWrap.hidden=!captions.checked;
   $("captionFontWrap").hidden=!captions.checked;
+  $("captionColorWrap").hidden=!captions.checked;
   text.required=captions.checked;
 }
 captions.addEventListener("change",updateCaptions);
