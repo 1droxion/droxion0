@@ -349,11 +349,11 @@ def homepage(request: Request):
     html = html.replace('<link rel="stylesheet" href="/static/studio.css">',
                         '<link rel="stylesheet" href="/static/studio.css"><link rel="stylesheet" href="/static/cloud.css">')
     html = html.replace('Direct public HTTPS MP4/MOV or your own YouTube video/live link. For YouTube, also upload the original recording — it is not downloaded from YouTube.',
-        'Direct public HTTPS MP4/MOV file URL (auto-imported), or your own YouTube video/live link alongside your original uploaded recording.')
+        'Paste your authorized YouTube video, completed live replay, or public MP4/MOV URL. YouTube may sometimes block cloud imports.')
     html = html.replace('</form>', '<label class="rights-consent" for="rights"><input id="rights" type="checkbox" required> I own this recording or have permission to process it.</label></form>', 1)
     html = html.replace('850 MB max', '120 MB max')
     html = html.replace('No AI · Five clips · Real exports', 'Private beta · Five clips · Real exports')
-    html = html.replace("</main>", '<div class="web-note">Secure private beta · Files are deleted after processing · 120 MB / 10 min maximum · YouTube watch links require your original file</div></main>')
+    html = html.replace("</main>", '<div class="web-note">Private beta · Files are deleted after processing · 120 MB / 10 min limit · YouTube URLs may be blocked by YouTube; upload an MP4 as fallback</div></main>')
     return HTMLResponse(html)
 
 @site.post("/api/jobs")
