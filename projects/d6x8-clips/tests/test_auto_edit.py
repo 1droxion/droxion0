@@ -54,3 +54,33 @@ def test_public_invalid_mode_returns_400(monkeypatch):
             "mode": "anything", "rights": "true"
         }, headers={"Origin": "https://droxion.com"})
         assert response.status_code == 400
+
+
+def test_real_auto_edit_mp4_export(tmp_path):
+    """Validate one real multi-cut montage and MP4 file, without network dependencies."""
+    import subprocess
+    import shutil
+    from auto_edit import render_auto_edit
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+        pytest.skip("FFmpeg required")
+    source = tmp_path / "source.mp4"
+    output = tmp_path / "Droxion_Auto_Edit.mp4"
+    subprocess.run([
+        "ffmpeg", "-y", "-v", "error",
+        "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=22050",
+        "-t", "4", "-c:v", "libx264", "-preset", "ultrafast",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", str(source),
+    ], check=True, timeout=30)
+    meta = render_auto_edit(
+        source, output, [{"start":0, "end":1}, {"start":2, "end":3}],
+        "cinematic",
+    )
+    assert output.stat().st_size > 1000
+    assert meta["duration"] == 2
+    dims = subprocess.check_output([
+        "ffprobe", "-v", "error", "-select_streams", "v:0",
+        "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0",
+        str(output)
+    ], text=True, timeout=30).strip()
+    assert dims == "720x1280"
