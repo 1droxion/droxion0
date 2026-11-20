@@ -136,7 +136,6 @@ form.addEventListener('submit',async e=>{
   e.preventDefault()
   const link=url.value.trim()
   if(!selectedFile&&!link){show('Upload your gameplay file or enter a supported direct media URL.',0,true);return}
-  if(isYouTube(link)&&!selectedFile){show('YouTube link recognized. Upload your own original video file as well.',0,true);return}
   if(selectedFile&&selectedFile.size>120*1024*1024){show('The web beta upload limit is 120 MB.',0,true);return}
   if(caption.checked&&!captionText.value.trim()){show('Enter your caption or turn captions off.',0,true);return}
   if(!$('rights').checked){show('Confirm you own or have permission to process this recording.',0,true);return}
