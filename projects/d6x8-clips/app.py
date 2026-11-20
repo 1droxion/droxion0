@@ -163,7 +163,7 @@ def select_highlights(audio, motion, duration, count=5, *, clip_seconds=None):
              for a,b in selected[:count]]
     return sorted(found,key=lambda x:-x["score"])
 
-def render(source, target, start, end, theme, index, caption_text="", caption_font="impact", caption_color="#FFFFFF"):
+def render(source, target, start, end, theme, index, caption_text="", caption_font="impact", caption_color="#FFFFFF", auto_zoom=False):
     """Render a 9:16 video with optional manually entered text burned into each clip."""
     color, label = THEMES[theme]
     if not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
@@ -198,7 +198,10 @@ def render(source, target, start, end, theme, index, caption_text="", caption_fo
         "[bg]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,boxblur=25:3[blur];"
         "[fg]scale=704:880:force_original_aspect_ratio=decrease[game];"
         "[blur][game]overlay=(W-w)/2:(H-h)/2[stage];"
-        "[stage]" + ",".join(overlays) + "[v]"
+        + ("[stage]zoompan=z='min(zoom+0.002,1.10)':"
+           "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
+           "d=1:s=720x1280:fps=30[zoomed];" if auto_zoom else "")
+        + ("[zoomed]" if auto_zoom else "[stage]") + ",".join(overlays) + "[v]"
     )
     cmd(["ffmpeg", "-y", "-v", "error", "-filter_complex_threads", "2", *VIDEO_INPUT, "-ss", str(start), "-i", str(source),
          "-t", str(max(1,end-start)), "-filter_complex", filt, "-map", "[v]",

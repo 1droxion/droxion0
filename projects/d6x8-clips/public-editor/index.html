@@ -62,8 +62,8 @@
 <section id="studio" class="studio public-studio" aria-labelledby="editor-title">
   <div class="public-beta-card paste-editor">
     <div class="beta-brow">DroxionClips · Create your clips</div>
-    <h2 id="editor-title">Turn your video into clips.</h2>
-    <p>Paste a YouTube link or direct video file link, or upload your recording. Choose 1–5 vertical highlights. Each clip is 30–35 seconds when the source is long enough. Preview all five highlights and download only the ones you like.</p>
+    <h2 id="editor-title">Auto-edit your video. Or create clips.</h2>
+    <p>Paste an authorized video link or upload your recording. Auto Edit joins strong moments into one finished reel. Clips creates 1–5 separate highlights.</p>
     <form id="clipForm" class="clip-form">
       <label class="editor-label" for="sourceUrl">Video link</label>
       <div class="paste-row">
@@ -77,7 +77,13 @@
       </div>
       <p id="sourceHelp" class="source-help">Paste a YouTube watch link, a direct video file link, or upload a recording.</p>
       <div class="clip-options">
-        <label>Number of clips
+        <label>Editing mode
+          <select id="editMode"><option value="auto" selected>Auto Edit — one finished video</option><option value="clips">Clips — separate highlights</option></select>
+        </label>
+        <label id="autoTemplateWrap">Auto Edit template
+          <select id="autoTemplate"><option value="gaming">Gaming Highlights</option><option value="talking">Talking / Podcast</option><option value="cinematic">Cinematic</option><option value="meme">Meme / Fast Cuts</option></select>
+        </label>
+        <label id="clipCountWrap" hidden>Number of clips
           <select id="clipCount"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option></select>
         </label>
         <label>Clip style
@@ -90,6 +96,9 @@
         <label id="captionTextWrap" hidden>Caption text
           <input id="captionText" maxlength="65" placeholder="YOUR BEST CLUTCH!">
         </label>
+        <label id="captionColorWrap" hidden>Caption color
+          <input id="captionColor" type="color" value="#ffffff" aria-label="Caption color">
+        </label>
       </div>
       <label class="rights-row"><input id="rightsCheck" type="checkbox" required> I own or have permission to edit this recording.</label>
       <p class="small-note">Free limited trial · 1 GiB maximum · Up to 3 hours per recording · No login required · One render at a time · Clips expire automatically</p>
@@ -101,7 +110,7 @@
       <h3 id="clipResultsTitle">Your clips are ready</h3>
       <div id="clipCards" class="clip-cards"></div>
       <div class="download-actions">
-        <button id="selectAllClips" type="button" class="beta-secondary">Select all 5</button>
+        <button id="selectAllClips" type="button" class="beta-secondary">Select all</button>
         <button id="downloadSelected" type="button" class="cta">Download selected clips</button>
         <span id="selectedCount">5 selected</span>
       </div>

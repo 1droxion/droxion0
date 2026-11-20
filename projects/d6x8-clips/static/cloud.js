@@ -5,6 +5,14 @@ const file = $('file'), url = $('url'), drop = $('drop')
 const caption = $('captionToggle'), captionText = $('captionText'), font = $('captionFont')
 const captionSettings = $('captionSettings'), captionMode = $('captionMode')
 const clipCount = $('clipCount'), captionColor = $('captionColor')
+const editMode = $('editMode'), autoTemplate = $('autoTemplate')
+function updateMode() {
+  const automatic = editMode.value === 'auto'
+  $('autoTemplateField').hidden = !automatic
+  $('clipCountField').hidden = automatic
+  generate.textContent = automatic ? 'Auto Edit Video →' : 'Create Clips →'
+}
+editMode.addEventListener('change',updateMode)
 const preview = $('captionPreview'), form = $('form'), generate = $('generate')
 const results = $('results'), status = $('status'), message = $('message'), bar = $('bar')
 const mobileMenu = $('menu'), nav = $('nav')
@@ -61,17 +69,20 @@ function clearResults() {
 }
 function showClips(clips) {
   clearResults()
-  if (clips.length !== Number(clipCount.value)) {show('The processing job did not produce the requested number of clips.',0,true);return}
+  if (clips.length !== (editMode.value === 'auto' ? 1 : Number(clipCount.value))) {show('The processing job did not produce the requested number of clips.',0,true);return}
   currentClips = clips
   const tools = document.createElement('section')
   tools.id = 'selectedTools'
   tools.className = 'selected-tools'
   const heading = document.createElement('div')
-  heading.innerHTML = '<strong>Choose your clips</strong><p>Select any of the five clips. Download individually, or download selected clips together.</p>'
+  heading.innerHTML = editMode.value === 'auto'
+    ? '<strong>Your auto-edited video</strong><p>One reel assembled from selected moments. Preview or download below.</p>'
+    : '<strong>Choose your clips</strong><p>Preview and download your highlights.</p>'
   const all = document.createElement('button')
   all.type='button'; all.textContent='Select all'; all.className='all-select'
   const bundle = document.createElement('button')
   bundle.type='button'; bundle.textContent='Download selected ZIP'; bundle.className='cta'
+  if(editMode.value === 'auto'){all.hidden=true;bundle.textContent='Download Edited MP4'}
   const count = document.createElement('span');count.className='selection-count'
   const checks=[]
   function sync() {
@@ -81,6 +92,7 @@ function showClips(clips) {
   }
   all.addEventListener('click',()=>{checks.forEach(c=>c.checked=true);sync()})
   bundle.addEventListener('click',()=>{
+    if(editMode.value === 'auto' && clips[0]) {safeOpen(clips[0].url+'?download=true',true);return}
     const nums=checks.filter(c=>c.checked).map(c=>c.value)
     if(!latestJob||!nums.length)return
     safeOpen(jobsBase+'/'+encodeURIComponent(latestJob)+'/selected.zip?clips='+nums.join(','),true)
@@ -143,7 +155,7 @@ form.addEventListener('submit',async e=>{
   if(caption.checked&&!captionText.value.trim()){show('Enter your caption or turn captions off.',0,true);return}
   if(!$('rights').checked){show('Confirm you own or have permission to process this recording.',0,true);return}
   clearResults();generate.disabled=true
-  show('Uploading your recording…',3)
+  show('Preparing video…',3)
   try{
     const body=new FormData()
     if(selectedFile)body.append('video',selectedFile)
@@ -154,6 +166,8 @@ form.addEventListener('submit',async e=>{
     body.append('caption_font',font.value)
     body.append('caption_color',captionColor.value)
     body.append('clip_count',clipCount.value)
+    body.append('mode',editMode.value)
+    body.append('auto_template',autoTemplate.value)
     body.append('rights','true')
     const response=await fetch(jobsBase,{method:'POST',body,credentials:'same-origin'})
     const data=await response.json()
@@ -167,9 +181,11 @@ form.addEventListener('submit',async e=>{
       const state=await statusResponse.json()
       show(state.message||'Processing…',state.progress||0)
       if(state.status==='error')throw Error(state.message||'Video rendering failed')
-      if(state.status==='done'){showClips(state.clips);show(state.clips.length+' clips ready! Choose your favorites.',100);return}
+      if(state.status==='done'){showClips(state.clips);show(editMode.value === 'auto' ? 'Auto-edited video ready!' : state.clips.length+' clips ready!',100);return}
     }
     throw Error('Processing is taking longer than expected. Try a shorter video.')
   }catch(error){show(error.message||'An error occurred.',0,true)}
   finally{generate.disabled=false}
 })
+
+updateMode()

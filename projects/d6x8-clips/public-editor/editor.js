@@ -7,6 +7,15 @@ const results=$("clipResults"),cards=$("clipCards"),submit=$("startClipping");
 const captions=$("captionsOn"),text=$("captionText"),captionWrap=$("captionTextWrap");
 const selectAll=$("selectAllClips"),download=$("downloadSelected"),count=$("selectedCount");
 let job=null,clips=[],retryUpload=false;
+const editMode=$("editMode"), autoTemplate=$("autoTemplate");
+function syncMode(){
+  const editing=editMode.value==="auto";
+  $("autoTemplateWrap").hidden=!editing;
+  $("clipCountWrap").hidden=editing;
+  submit.textContent=editing?"Auto Edit Video →":"Create Clips →";
+}
+editMode.addEventListener("change",syncMode);
+syncMode();
 const youtube=raw=>{
   try{
     const u=new URL(raw);
@@ -39,7 +48,7 @@ function showClips(items,expected){
     const label=document.createElement("label");label.className="clip-pick";
     const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.checked=true;checkbox.value=String(clip.number);
     checkbox.addEventListener("change",updateSelection);
-    label.append(checkbox,document.createTextNode(" Clip "+clip.number));
+    label.append(checkbox,document.createTextNode(editMode.value==="auto"?" Auto-edited video":" Clip "+clip.number));
     const subtitle=document.createElement("small");
     subtitle.textContent=Math.round(clip.start)+"s–"+Math.round(clip.end)+"s";
     const individual=document.createElement("a");
@@ -49,6 +58,8 @@ function showClips(items,expected){
     cards.append(card);
   }
   results.hidden=false;
+  download.textContent=editMode.value==="auto"?"Download Edited MP4":"Download Selected Clips";
+  selectAll.hidden=editMode.value==="auto";
   updateSelection();
   results.scrollIntoView({behavior:"smooth",block:"start"});
 }
@@ -70,12 +81,15 @@ async function run(){
   const body=new FormData();
   if(video)body.append("video",video);
   if(link)body.append("url",link);
-  const requested=Number($("clipCount").value);
+  const requested=editMode.value==="auto"?1:Number($("clipCount").value);
   body.append("clip_count",String(requested));
+  body.append("mode",editMode.value);
+  body.append("auto_template",autoTemplate.value);
   body.append("template",$("clipStyle").value);
   body.append("captions",String(captions.checked));
   body.append("caption_text",captions.checked?text.value.trim():"");
   body.append("caption_font",$("clipFont").value);
+  body.append("caption_color",$("captionColor").value);
   body.append("rights","true");
   notice(video ? "Uploading your recording…" : youtube(link) ? "Starting YouTube import…" : "Importing the video file…",5);
   const jobData=await responseJSON(await fetch(API+"/api/public/jobs",{method:"POST",body,mode:"cors"}));
@@ -87,7 +101,7 @@ async function run(){
     if(state.status==="error")throw Error(state.message||"This video could not be processed.");
     if(state.status==="done"){
       showClips(state.clips,requested);
-      notice(requested===1 ? "Your clip is ready." : requested+" clips are ready. Select your favorites below.",100);
+      notice(editMode.value==="auto"?"Auto-edited video ready.":requested===1 ? "Your clip is ready." : requested+" clips are ready. Select your favorites below.",100);
       return;
     }
   }
@@ -117,6 +131,7 @@ form.addEventListener("submit",async e=>{
 function updateCaptions(){
   captionWrap.hidden=!captions.checked;
   $("captionFontWrap").hidden=!captions.checked;
+  $("captionColorWrap").hidden=!captions.checked;
   text.required=captions.checked;
 }
 captions.addEventListener("change",updateCaptions);
@@ -144,5 +159,9 @@ selectAll.addEventListener("click",()=>{
 download.addEventListener("click",()=>{
   const picks=selected();
   if(!job||!picks.length)return;
+  if(editMode.value==="auto" && clips[0]){
+    window.location.assign(API+clips[0].url+"?download=true");
+    return;
+  }
   window.location.assign(API+"/api/public/jobs/"+encodeURIComponent(job)+"/selected.zip?clips="+picks.join(","));
 });

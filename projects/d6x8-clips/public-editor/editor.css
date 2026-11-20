@@ -31,3 +31,5 @@
 .download-actions button:disabled,.paste-row button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:980px){.clip-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:640px){.paste-row{flex-direction:column}.paste-row .cta{width:100%}.clip-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.clip-options{align-items:stretch}.clip-options>label:not(.inline-caption){min-width:100%}}
+
+#clipCountWrap[hidden],#autoTemplateWrap[hidden],#captionColorWrap[hidden]{display:none!important}

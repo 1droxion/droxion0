@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from creator_sources import creator_video_reference
+from auto_edit import AUTO_TEMPLATES, plan_auto_edit, render_auto_edit
 from youtube_import import HIGHLIGHT_COUNT, MAX_CLIP_SECONDS, MIN_CLIP_SECONDS, download_youtube, require_tools
 from app import (
     HERE, THEMES, CAPTION_FONTS, PinnedHTTPSConnection,
@@ -200,7 +201,7 @@ def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
     finally:
         conn.close()
 
-def process(job_id, source, template, caption_text, caption_font, source_url, public=False, clip_count=HIGHLIGHT_COUNT, caption_color="#FFFFFF"):
+def process(job_id, source, template, caption_text, caption_font, source_url, public=False, clip_count=HIGHLIGHT_COUNT, caption_color="#FFFFFF", mode="clips", auto_template="gaming"):
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
@@ -209,17 +210,29 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
             update(job_id, progress=8, message="Importing YouTube video")
             download_youtube(source_url, source, PUBLIC_YOUTUBE_MAX_BYTES if public else MAX_BYTES,
                              PUBLIC_YOUTUBE_MAX_DURATION if public else MAX_DURATION,
-                             MIN_CLIP_SECONDS * clip_count)
+                             MIN_CLIP_SECONDS * clip_count if mode == "clips" else 12)
         elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
         max_duration = PUBLIC_YOUTUBE_MAX_DURATION if youtube else (PUBLIC_MAX_DURATION if public else MAX_DURATION)
-        if youtube and length < MIN_CLIP_SECONDS * clip_count:
+        if youtube and mode == "clips" and length < MIN_CLIP_SECONDS * clip_count:
             raise ValueError("Use a video with at least 30 seconds for each requested clip.")
         if not 12 <= length <= max_duration:
             maximum = "3 hours" if max_duration == PUBLIC_MAX_DURATION else f"{max_duration // 60} minutes"
             raise ValueError(f"Choose a video between 12 seconds and {maximum}.")
         update(job_id, progress=26, message="Measuring motion and audio activity")
+        if mode == "auto":
+            cuts = plan_auto_edit(audio_energy(source, length), motion_energy(source, length), length, auto_template)
+            update(job_id, progress=40, message="Automatically editing selected moments")
+            name = "Droxion_Auto_Edit.mp4"
+            metadata = render_auto_edit(source, folder / name, cuts, auto_template,
+                                        caption_text, caption_font, caption_color)
+            prefix = "/api/public/jobs" if public else "/api/jobs"
+            clip = {"number":1, "start":0, "end":metadata["duration"],
+                    "url":f"{prefix}/{job_id}/files/{name}", "cuts":metadata["cuts"]}
+            update(job_id, status="done", progress=100, message="Auto-edited video ready",
+                   clips=[clip], mode="auto", template=auto_template)
+            return
         seconds = min(MAX_CLIP_SECONDS, int(length // clip_count)) if public and length >= MIN_CLIP_SECONDS * clip_count else None
         picks = select_highlights(audio_energy(source, length), motion_energy(source, length),
                                   length, count=clip_count, clip_seconds=seconds)
@@ -376,9 +389,12 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                      caption_font: str=Form(default="bebasneue"),
                      clip_count: int=Form(default=5, ge=1, le=5),
                      caption_color: str=Form(default="#FFFFFF"),
+                     mode: str=Form(default="clips"), auto_template: str=Form(default="gaming"),
                      rights: bool=Form(default=False)):
     require_auth(request)
     require_same_origin(request)
+    if mode not in ("clips", "auto") or auto_template not in AUTO_TEMPLATES:
+        raise HTTPException(400, "Choose a valid editing mode and template.")
     if not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
         raise HTTPException(400, "Choose a valid caption color.")
     if not rights:
@@ -423,7 +439,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                             "video_reference": youtube}
         worker = threading.Thread(target=process, daemon=True,
                                   args=(job_id,source,template,caption_text,caption_font,
-                                        url,False,clip_count,caption_color))
+                                        url,False,clip_count,caption_color,mode,auto_template))
         worker.start()
         accepted = True
         return {"job_id": job_id}
@@ -457,7 +473,7 @@ def job_status(job_id: str, request: Request):
 @site.get("/api/jobs/{job_id}/files/{filename}")
 def clip_file(job_id: str, filename: str, request: Request, download: bool=False):
     require_job_access(request, job_id)
-    if not JOB_PATTERN.fullmatch(job_id) or not FILE_PATTERN.fullmatch(filename):
+    if not JOB_PATTERN.fullmatch(job_id) or not (FILE_PATTERN.fullmatch(filename) or filename == "Droxion_Auto_Edit.mp4"):
         raise HTTPException(404, "Clip not found.")
     with lock:
         job = jobs.get(job_id)
@@ -526,9 +542,12 @@ async def create_public_job(
     captions: bool=Form(default=False), caption_text: str=Form(default=""),
     caption_font: str=Form(default="bebasneue"),
     rights: bool=Form(default=False), clip_count: int=Form(default=5, ge=1, le=5),
-    caption_color: str=Form(default="#FFFFFF")
+    caption_color: str=Form(default="#FFFFFF"), mode: str=Form(default="clips"),
+    auto_template: str=Form(default="gaming")
 ):
     ip = check_public_trial(request)
+    if mode not in ("clips", "auto") or auto_template not in AUTO_TEMPLATES:
+        raise HTTPException(400, "Choose a valid editing mode and template.")
     if not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
         raise HTTPException(400, "Choose a valid caption color.")
     if not rights:
@@ -592,7 +611,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True,clip_count,caption_color),
+            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True,clip_count,caption_color,mode,auto_template),
         ).start()
         accepted = True
         return {"job_id":job_id}

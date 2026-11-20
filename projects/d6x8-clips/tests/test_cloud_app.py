@@ -28,11 +28,11 @@ def sign_in(client):
 
 def test_requires_login_and_contains_original_website(client):
     assert client.get("/").status_code == 200
-    assert "/login" in str(client.get("/").url)
+    assert "/login" in str(client.get("/private").url)
     assert client.get("/api/jobs/"+("a"*32)).status_code == 401
     assert client.post("/api/jobs",data={"rights":"true"}).status_code == 401
     sign_in(client)
-    response=client.get("/")
+    response=client.get("/private")
     assert response.status_code == 200
     assert "DroxionClips" in response.text
     assert 'id="rights"' in response.text
@@ -70,13 +70,25 @@ def test_cross_site_login_origin_blocked(client):
     assert not response.cookies.get(cloud.COOKIE)
 
 
-def test_youtube_reference_rejected_without_uploaded_footage(client):
+def test_authorized_youtube_reference_can_start_import(client, monkeypatch):
     sign_in(client)
-    response=client.post("/api/jobs",data={"rights":"true","url":"https://youtu.be/dQw4w9WgXcQ"})
-    assert response.status_code == 400
-    assert "original" in response.json()["detail"].lower()
-    response=client.post("/api/jobs",data={"rights":"true","url":"https://www.youtube.com/live/dQw4w9WgXcQ"})
-    assert response.status_code == 400
+    captured = []
+    def fake_process(*args):
+        captured.append(args)
+        cloud.guard.release()
+    monkeypatch.setattr(cloud, "process", fake_process)
+    response=client.post("/api/jobs",data={
+        "rights":"true","url":"https://youtu.be/dQw4w9WgXcQ",
+        "mode":"auto","auto_template":"gaming",
+    })
+    assert response.status_code == 200
+    assert "job_id" in response.json()
+    import time
+    for _ in range(100):
+        if captured:
+            break
+        time.sleep(0.01)
+    assert captured and captured[0][-2:] == ("auto", "gaming")
 
 def test_consent_font_and_missing_video(client):
     sign_in(client)
