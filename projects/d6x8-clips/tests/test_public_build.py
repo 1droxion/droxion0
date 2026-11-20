@@ -1,4 +1,4 @@
-"""Ensure public marketing build never exposes nonfunctional clipping UI."""
+"""Ensure the public Droxion site includes functional Auto Edit and Clips controls."""
 from pathlib import Path
 import shutil
 import subprocess
@@ -13,11 +13,12 @@ def test_public_build_is_safe_and_complete():
     output=ROOT/"public-dist"
     page=(output/"index.html").read_text(encoding="utf-8")
     assert 'DroxionClips' in page
-    assert 'Download Windows beta' in page
-    assert 'id="form"' not in page
+    assert 'id="editMode"' in page
+    assert 'id="autoTemplate"' in page
+    assert 'id="clipCount"' in page
+    assert 'id="rightsCheck"' in page
     assert 'id="obsStart"' not in page
-    assert 'No payments are collected.' in page
-    assert 'Open Online Editor (Private Beta)' in page
+    assert (output/"editor.js").is_file()
+    assert (output/"editor.css").is_file()
     assert (output/"static"/"hero.webp").stat().st_size > 0
     assert (output/"static"/"studio.css").stat().st_size > 0
-    assert (output/"static"/"public.js").stat().st_size > 0
