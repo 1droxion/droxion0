@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id)
 const file = $('file'), url = $('url'), drop = $('drop')
 const caption = $('captionToggle'), captionText = $('captionText'), font = $('captionFont')
 const captionSettings = $('captionSettings'), captionMode = $('captionMode')
+const clipCount = $('clipCount'), captionColor = $('captionColor')
 const preview = $('captionPreview'), form = $('form'), generate = $('generate')
 const results = $('results'), status = $('status'), message = $('message'), bar = $('bar')
 const mobileMenu = $('menu'), nav = $('nav')
@@ -22,6 +23,7 @@ function updateCaption() {
   captionMode.textContent = caption.checked ? 'On' : 'Off'
   preview.textContent = captionText.value.trim() || 'YOUR CAPTION'
   preview.style.fontFamily = fonts[font.value] || 'Arial'
+  preview.style.color = captionColor.value
   captionText.required = caption.checked
 }
 function isYouTube(raw) {
@@ -56,22 +58,22 @@ function clearResults() {
 }
 function showClips(clips) {
   clearResults()
-  if (clips.length !== 5) {show('The processing job did not produce five clips.',0,true);return}
+  if (clips.length !== Number(clipCount.value)) {show('The processing job did not produce the requested clips.',0,true);return}
   currentClips = clips
   const tools = document.createElement('section')
   tools.id = 'selectedTools'
   tools.className = 'selected-tools'
   const heading = document.createElement('div')
-  heading.innerHTML = '<strong>Choose your clips</strong><p>Select any of the five clips. Download individually, or download selected clips together.</p>'
+  heading.innerHTML = '<strong>Choose your clips</strong><p>Preview, select, and download the clips you like.</p>'
   const all = document.createElement('button')
-  all.type='button'; all.textContent='Select all 5'; all.className='all-select'
+  all.type='button'; all.textContent='Select all'; all.className='all-select'
   const bundle = document.createElement('button')
   bundle.type='button'; bundle.textContent='Download selected ZIP'; bundle.className='cta'
   const count = document.createElement('span');count.className='selection-count'
   const checks=[]
   function sync() {
     const nums=checks.filter(c=>c.checked).map(c=>c.value)
-    count.textContent=nums.length+' of 5 selected'
+    count.textContent=nums.length+' of '+clips.length+' selected'
     bundle.disabled=nums.length===0
   }
   all.addEventListener('click',()=>{checks.forEach(c=>c.checked=true);sync()})
@@ -105,11 +107,11 @@ function showClips(clips) {
 }
 file.addEventListener('change',()=>{
   selectFile(file.files[0])
-  if(selectedFile && !isYouTube(url.value.trim()))url.value=''
+  if(selectedFile)url.value=''
 })
 url.addEventListener('input',()=>{
   // A YouTube reference may accompany an uploaded recording; direct MP4 is standalone.
-  if(url.value.trim()&&!isYouTube(url.value.trim())) {
+  if(url.value.trim()) {
     selectedFile=null;file.value='';selectFile(null)
   }
 })
@@ -120,7 +122,7 @@ drop.addEventListener('drop',e=>{
   if(!e.dataTransfer.files.length)return
   file.value='';selectFile(e.dataTransfer.files[0])
 })
-for(const control of [caption,captionText,font])control.addEventListener('input',updateCaption)
+for(const control of [caption,captionText,font,captionColor])control.addEventListener('input',updateCaption)
 updateCaption()
 if(mobileMenu&&nav){
   mobileMenu.addEventListener('click',()=>{
@@ -134,7 +136,6 @@ form.addEventListener('submit',async e=>{
   e.preventDefault()
   const link=url.value.trim()
   if(!selectedFile&&!link){show('Upload your gameplay file or enter a supported direct media URL.',0,true);return}
-  if(isYouTube(link)&&!selectedFile){show('YouTube link recognized. Upload your own original video file as well.',0,true);return}
   if(selectedFile&&selectedFile.size>120*1024*1024){show('The web beta upload limit is 120 MB.',0,true);return}
   if(caption.checked&&!captionText.value.trim()){show('Enter your caption or turn captions off.',0,true);return}
   if(!$('rights').checked){show('Confirm you own or have permission to process this recording.',0,true);return}
@@ -148,6 +149,8 @@ form.addEventListener('submit',async e=>{
     body.append('captions',String(caption.checked))
     body.append('caption_text',caption.checked?captionText.value.trim():'')
     body.append('caption_font',font.value)
+    body.append('clip_count',clipCount.value)
+    body.append('caption_color',captionColor.value)
     body.append('rights','true')
     const response=await fetch('/api/jobs',{method:'POST',body,credentials:'same-origin'})
     const data=await response.json()
@@ -161,7 +164,7 @@ form.addEventListener('submit',async e=>{
       const state=await statusResponse.json()
       show(state.message||'Processing…',state.progress||0)
       if(state.status==='error')throw Error(state.message||'Video rendering failed')
-      if(state.status==='done'){showClips(state.clips);show('Five clips ready! Choose your favorites.',100);return}
+      if(state.status==='done'){showClips(state.clips);show(state.clips.length+' clips ready! Choose your favorites.',100);return}
     }
     throw Error('Processing is taking longer than expected. Try a shorter video.')
   }catch(error){show(error.message||'An error occurred.',0,true)}
