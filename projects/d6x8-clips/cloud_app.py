@@ -200,7 +200,7 @@ def download_direct_limited(url: str, target: Path, limit: int = MAX_BYTES):
     finally:
         conn.close()
 
-def process(job_id, source, template, caption_text, caption_font, source_url, public=False, clip_count=HIGHLIGHT_COUNT):
+def process(job_id, source, template, caption_text, caption_font, source_url, public=False, clip_count=HIGHLIGHT_COUNT, caption_color="#FFFFFF"):
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
@@ -224,7 +224,7 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
         clips = []
         for i, clip in enumerate(picks, 1):
             name = f"D6X8_Highlight_{i:02d}.mp4"
-            render(source, folder / name, clip["start"], clip["end"], template, i, caption_text, caption_font)
+            render(source, folder / name, clip["start"], clip["end"], template, i, caption_text, caption_font, caption_color)
             prefix = "/api/public/jobs" if public else "/api/jobs"
             clips.append({**clip, "number": i, "url": f"{prefix}/{job_id}/files/{name}"})
             update(job_id, progress=min(95, 28 + int(67 * i / clip_count)), message=f"Rendering highlight {i} of {clip_count}", clips=list(clips))
@@ -508,9 +508,12 @@ async def create_public_job(
     url: str=Form(default=""), template: str=Form(default="neon"),
     captions: bool=Form(default=False), caption_text: str=Form(default=""),
     caption_font: str=Form(default="bebasneue"),
-    rights: bool=Form(default=False), clip_count: int=Form(default=5, ge=1, le=5)
+    rights: bool=Form(default=False), clip_count: int=Form(default=5, ge=1, le=5),
+    caption_color: str=Form(default="#FFFFFF")
 ):
     ip = check_public_trial(request)
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
+        raise HTTPException(400, "Choose a valid caption color.")
     if not rights:
         raise HTTPException(400, "Confirm you own or have permission to use the footage.")
     url = (url or "").strip()
@@ -572,7 +575,7 @@ async def create_public_job(
                             "created":time.time(),"clips":[],"public":True}
         threading.Thread(
             target=process, daemon=True,
-            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True,clip_count),
+            args=(job_id,source,template,caption_text,caption_font,"" if video else (yt["watch_url"] if yt else url),True,clip_count,caption_color),
         ).start()
         accepted = True
         return {"job_id":job_id}
