@@ -362,6 +362,7 @@ def editor_page(public: bool):
     html = html.replace('850 MB max', '120 MB max')
     if public:
         html = html.replace('<body id="home">', '<body id="home" data-public-editor="true">')
+        html = html.replace('120 MB / 10 min limit', 'Public upload limits apply')
         html = html.replace('Private beta · Files are deleted after processing', 'Public trial · Files are deleted after processing')
         html = html.replace('Private beta · Five clips · Real exports', 'Public trial · Up to five clips · Real exports')
     html = html.replace('No AI · Five clips · Real exports', 'Private beta · Five clips · Real exports')
