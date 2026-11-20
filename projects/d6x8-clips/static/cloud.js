@@ -4,6 +4,7 @@ const $ = id => document.getElementById(id)
 const file = $('file'), url = $('url'), drop = $('drop')
 const caption = $('captionToggle'), captionText = $('captionText'), font = $('captionFont')
 const captionSettings = $('captionSettings'), captionMode = $('captionMode')
+const clipCount = $('clipCount'), captionColor = $('captionColor')
 const preview = $('captionPreview'), form = $('form'), generate = $('generate')
 const results = $('results'), status = $('status'), message = $('message'), bar = $('bar')
 const mobileMenu = $('menu'), nav = $('nav')
@@ -22,6 +23,7 @@ function updateCaption() {
   captionMode.textContent = caption.checked ? 'On' : 'Off'
   preview.textContent = captionText.value.trim() || 'YOUR CAPTION'
   preview.style.fontFamily = fonts[font.value] || 'Arial'
+  preview.style.color = captionColor.value
   captionText.required = caption.checked
 }
 function isYouTube(raw) {
@@ -56,7 +58,7 @@ function clearResults() {
 }
 function showClips(clips) {
   clearResults()
-  if (clips.length !== 5) {show('The processing job did not produce five clips.',0,true);return}
+  if (clips.length !== Number(clipCount.value)) {show('The processing job did not produce the requested number of clips.',0,true);return}
   currentClips = clips
   const tools = document.createElement('section')
   tools.id = 'selectedTools'
@@ -64,14 +66,14 @@ function showClips(clips) {
   const heading = document.createElement('div')
   heading.innerHTML = '<strong>Choose your clips</strong><p>Select any of the five clips. Download individually, or download selected clips together.</p>'
   const all = document.createElement('button')
-  all.type='button'; all.textContent='Select all 5'; all.className='all-select'
+  all.type='button'; all.textContent='Select all'; all.className='all-select'
   const bundle = document.createElement('button')
   bundle.type='button'; bundle.textContent='Download selected ZIP'; bundle.className='cta'
   const count = document.createElement('span');count.className='selection-count'
   const checks=[]
   function sync() {
     const nums=checks.filter(c=>c.checked).map(c=>c.value)
-    count.textContent=nums.length+' of 5 selected'
+    count.textContent=nums.length+' of '+clips.length+' selected'
     bundle.disabled=nums.length===0
   }
   all.addEventListener('click',()=>{checks.forEach(c=>c.checked=true);sync()})
@@ -120,7 +122,7 @@ drop.addEventListener('drop',e=>{
   if(!e.dataTransfer.files.length)return
   file.value='';selectFile(e.dataTransfer.files[0])
 })
-for(const control of [caption,captionText,font])control.addEventListener('input',updateCaption)
+for(const control of [caption,captionText,font,captionColor])control.addEventListener('input',updateCaption)
 updateCaption()
 if(mobileMenu&&nav){
   mobileMenu.addEventListener('click',()=>{
@@ -148,6 +150,8 @@ form.addEventListener('submit',async e=>{
     body.append('captions',String(caption.checked))
     body.append('caption_text',caption.checked?captionText.value.trim():'')
     body.append('caption_font',font.value)
+    body.append('caption_color',captionColor.value)
+    body.append('clip_count',clipCount.value)
     body.append('rights','true')
     const response=await fetch('/api/jobs',{method:'POST',body,credentials:'same-origin'})
     const data=await response.json()
@@ -161,7 +165,7 @@ form.addEventListener('submit',async e=>{
       const state=await statusResponse.json()
       show(state.message||'Processing…',state.progress||0)
       if(state.status==='error')throw Error(state.message||'Video rendering failed')
-      if(state.status==='done'){showClips(state.clips);show('Five clips ready! Choose your favorites.',100);return}
+      if(state.status==='done'){showClips(state.clips);show(state.clips.length+' clips ready! Choose your favorites.',100);return}
     }
     throw Error('Processing is taking longer than expected. Try a shorter video.')
   }catch(error){show(error.message||'An error occurred.',0,true)}
