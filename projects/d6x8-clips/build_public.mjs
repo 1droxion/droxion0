@@ -7,6 +7,11 @@ const output = join(root, 'public-dist');
 rmSync(output, {recursive:true, force:true});
 mkdirSync(output, {recursive:true});
 cpSync(join(root, 'static'), join(output, 'static'), {recursive:true});
+cpSync(join(root, 'public-editor'), output, {recursive:true});
+if (!readFileSync(join(output, 'index.html'),'utf8').includes('id="editMode"'))
+  throw Error('Auto Edit controls missing in public build');
+console.log('Droxion public Auto Edit & Clips editor built');
+process.exit(0);
 const studio = [
 '<section id="studio" class="studio public-studio" aria-labelledby="beta-heading">',
 '<div class="public-beta-card">',
