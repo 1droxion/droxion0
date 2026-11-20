@@ -66,6 +66,12 @@
               <details id="linkOptions"><summary>Use a video link</summary><label class="visually-hidden" for="url">Direct video URL</label><input id="url" name="url" type="url" placeholder="https://…/gameplay.mp4"><small>Direct public HTTPS MP4/MOV or your own YouTube video/live link. For YouTube, also upload the original recording — it is not downloaded from YouTube.</small></details>
             </div>
             <div class="field divider">
+              <label for="clipCount">Number of Clips</label>
+              <select id="clipCount" name="clip_count">
+                <option value="1">1 clip</option><option value="2">2 clips</option><option value="3">3 clips</option><option value="4">4 clips</option><option value="5" selected>5 clips</option>
+              </select>
+            </div>
+            <div class="field divider">
               <label for="template">✦ &nbsp;Pro Style</label>
               <select id="template" name="template">
                 <option value="royal">Cinematic</option>
@@ -89,8 +95,12 @@
                 <option value="anton">Anton</option>
               </select>
             </div>
+            <div class="field divider">
+              <label for="captionColor">Caption Color</label>
+              <input type="color" id="captionColor" name="caption_color" value="#ffffff">
+            </div>
             <div class="field divider action">
-              <button class="cta" id="generate" type="submit"><svg><use href="#clap"/></svg>Create 5 Clips <span aria-hidden="true">→</span></button>
+              <button class="cta" id="generate" type="submit"><svg><use href="#clap"/></svg>Create Clips <span aria-hidden="true">→</span></button>
             </div>
           </div>
           <div class="caption-settings" id="captionSettings" hidden>
