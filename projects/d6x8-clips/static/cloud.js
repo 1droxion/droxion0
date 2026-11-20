@@ -82,6 +82,7 @@ function showClips(clips) {
   all.type='button'; all.textContent='Select all'; all.className='all-select'
   const bundle = document.createElement('button')
   bundle.type='button'; bundle.textContent='Download selected ZIP'; bundle.className='cta'
+  if(editMode.value === 'auto'){all.hidden=true;bundle.textContent='Download Edited MP4'}
   const count = document.createElement('span');count.className='selection-count'
   const checks=[]
   function sync() {
@@ -91,6 +92,7 @@ function showClips(clips) {
   }
   all.addEventListener('click',()=>{checks.forEach(c=>c.checked=true);sync()})
   bundle.addEventListener('click',()=>{
+    if(editMode.value === 'auto' && clips[0]) {safeOpen(clips[0].url+'?download=true',true);return}
     const nums=checks.filter(c=>c.checked).map(c=>c.value)
     if(!latestJob||!nums.length)return
     safeOpen(jobsBase+'/'+encodeURIComponent(latestJob)+'/selected.zip?clips='+nums.join(','),true)
