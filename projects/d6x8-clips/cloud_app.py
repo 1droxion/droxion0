@@ -204,10 +204,12 @@ def process(job_id, source, template, caption_text, caption_font, source_url, pu
     folder = source.parent
     try:
         update(job_id, status="processing", progress=10, message="Opening gameplay video")
-        youtube = bool(public and source_url and creator_video_reference(source_url))
+        youtube = bool(source_url and creator_video_reference(source_url))
         if youtube:
             update(job_id, progress=8, message="Importing YouTube video")
-            download_youtube(source_url, source, PUBLIC_YOUTUBE_MAX_BYTES, PUBLIC_YOUTUBE_MAX_DURATION, MIN_CLIP_SECONDS * clip_count)
+            download_youtube(source_url, source, PUBLIC_YOUTUBE_MAX_BYTES if public else MAX_BYTES,
+                             PUBLIC_YOUTUBE_MAX_DURATION if public else MAX_DURATION,
+                             MIN_CLIP_SECONDS * clip_count)
         elif source_url:
             download_direct_limited(source_url, source, PUBLIC_MAX_BYTES if public else MAX_BYTES)
         length = duration_of(source)
@@ -370,9 +372,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
         raise HTTPException(400, "Confirm you own or have permission to use this footage.")
     url = (url or "").strip()
     youtube = creator_video_reference(url) if url else None
-    if youtube and not video:
-        raise HTTPException(400, "YouTube link recognized. Please upload your original recording from YouTube Studio or OBS.")
-    if not youtube and bool(video) == bool(url):
+    if bool(video) == bool(url):
         raise HTTPException(400, "Choose a video upload or a direct public HTTPS MP4 file link.")
     if template not in THEMES or caption_font not in CAPTION_FONTS:
         raise HTTPException(400, "Choose a supported video style and font.")
@@ -410,7 +410,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                             "video_reference": youtube}
         worker = threading.Thread(target=process, daemon=True,
                                   args=(job_id,source,template,caption_text,caption_font,
-                                        "" if youtube else url,False,clip_count,caption_color))
+                                        url,False,clip_count,caption_color))
         worker.start()
         accepted = True
         return {"job_id": job_id}
