@@ -359,9 +359,13 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                      url: str | None=Form(default=None), template: str=Form(default="neon"),
                      captions: bool=Form(default=False), caption_text: str=Form(default=""),
                      caption_font: str=Form(default="bebasneue"),
+                     clip_count: int=Form(default=5, ge=1, le=5),
+                     caption_color: str=Form(default="#FFFFFF"),
                      rights: bool=Form(default=False)):
     require_auth(request)
     require_same_origin(request)
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", caption_color):
+        raise HTTPException(400, "Choose a valid caption color.")
     if not rights:
         raise HTTPException(400, "Confirm you own or have permission to use this footage.")
     url = (url or "").strip()
@@ -406,7 +410,7 @@ async def submit_job(request: Request, video: UploadFile | None=File(default=Non
                             "video_reference": youtube}
         worker = threading.Thread(target=process, daemon=True,
                                   args=(job_id,source,template,caption_text,caption_font,
-                                        "" if youtube else url))
+                                        "" if youtube else url,False,clip_count,caption_color))
         worker.start()
         accepted = True
         return {"job_id": job_id}
