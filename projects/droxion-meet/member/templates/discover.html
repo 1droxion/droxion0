@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Discover</h1>
+{% if profile %}<a class="btn" href="{% url 'edit_profile' %}">Edit profile</a>{% endif %}
+{% if not profile.visible %}<p>Turn on profile visibility to discover eligible test accounts.</p>{% endif %}
+<div class="mode-grid beta-cards">
+  {% for person in profiles %}
+    <article class="mode-card">
+      <span class="pill">{{ person.get_intention_display }}</span>
+      <h2>{{ person.name }}</h2>
+      <p>{{ person.bio }}</p>
+      <p>{{ person.interests }}</p>
+      <div class="beta-actions">
+        <form method="post" action="{% url 'react' person.user_id 'like' %}">{% csrf_token %}<button class="btn primary">Like</button></form>
+        <form method="post" action="{% url 'react' person.user_id 'pass' %}">{% csrf_token %}<button class="btn">Pass</button></form>
+      </div>
+      <div class="beta-actions">
+        <a href="{% url 'report' person.user_id %}">Report</a>
+        <form method="post" action="{% url 'react' person.user_id 'block' %}">{% csrf_token %}<button class="btn danger">Block</button></form>
+      </div>
+    </article>
+  {% empty %}
+    {% if profile.visible %}<p>No compatible test profiles are available.</p>{% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

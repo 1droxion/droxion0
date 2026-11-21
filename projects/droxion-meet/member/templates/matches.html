@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Chats &amp; plans</h1>
+<div class="mode-grid beta-cards">
+{% for peer, unread in rows %}
+  <article class="mode-card">
+    <h2>{{ peer.name }}</h2>
+    {% if unread %}<span class="pill">Unread messages</span>{% endif %}
+    <a class="btn primary" href="{% url 'thread' peer.user_id %}">Open conversation</a>
+  </article>
+{% empty %}<p>Mutual likes will appear here.</p>{% endfor %}
+</div>
+{% endblock %}

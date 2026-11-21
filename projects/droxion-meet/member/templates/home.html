@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="beta-hero">
+  <h1>Start with a hello.</h1>
+  <p>Find friends, explore dating, or make plans around something you both enjoy.</p>
+  <div class="beta-actions">
+    <a class="btn primary" href="{% url 'demo' %}">Practice with fictional bots</a>
+    <a class="btn" href="{% url 'discover' %}">Enter member QA</a>
+  </div>
+</section>
+<section aria-labelledby="membership">
+  <h2 id="membership">Membership preview</h2>
+  <p>Proposed monthly plans. Checkout is disabled.</p>
+  <div class="mode-grid">
+    <article class="mode-card"><h3>Free · $0</h3><p>10 likes per day, mutual matches and chat.</p></article>
+    <article class="mode-card"><h3>Meet Plus · $9.99</h3><p>30 likes per day. Advanced filters are planned.</p></article>
+    <article class="mode-card"><h3>Meet Premium · $19.99</h3><p>50 likes per day. Optional visibility and customization are planned.</p></article>
+  </div>
+</section>
+{% endblock %}
