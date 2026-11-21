@@ -12,7 +12,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from .forms import MessageForm, PlanForm, ProfileForm, ReportForm
-from .models import Connection, LikeEvent, Message, Plan, Profile, Report
+from .models import Call, Connection, LikeEvent, Message, Plan, Profile, Report
 
 User = get_user_model()
 
@@ -116,6 +116,8 @@ def react(request, peer, action):
     elif action == "unmatch" and pair.matched:
         pair.closed = True
     pair.save()
+    if pair.blocked or pair.closed:
+        Call.objects.filter(connection=pair).delete()
     return redirect("thread", peer=peer) if pair.matched else redirect("discover")
 
 
@@ -146,9 +148,11 @@ def get_pair(request, peer, lock=False):
 @member_view
 @transaction.atomic
 def thread(request, peer):
+    from .calls import enabled
     pair = get_pair(request, peer)
     return render(request, "thread.html", {
         "peer": get_object_or_404(Profile, user_id=peer),
+        "calling_enabled": enabled(),
         "plans": Plan.objects.filter(connection=pair).order_by("-id")[:25],
         "message_form": MessageForm(), "plan_form": PlanForm(),
     })

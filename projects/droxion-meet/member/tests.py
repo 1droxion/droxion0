@@ -169,3 +169,37 @@ class MemberTests(TestCase):
         self.assertEqual(gate(req.get("/", HTTP_AUTHORIZATION="Basic @")).status_code, 401)
         credentials = base64.b64encode(b"beta:test-private-key").decode()
         self.assertEqual(gate(req.get("/", HTTP_AUTHORIZATION=f"Basic {credentials}")).status_code, 200)
+
+    def call(self, client, peer, action, **payload):
+        return client.post(reverse("call_signal", args=[peer.pk]), {
+            "action": action, **payload,
+        }, content_type="application/json")
+
+    def test_call_requires_a_match_and_recipient_answer(self):
+        offer = {"mode": "video", "sdp": "v=0\r\n"}
+        self.assertEqual(self.call(self.a, self.jamie, "start", **offer).status_code, 404)
+        self.match()
+        session = self.call(self.a, self.jamie, "start", **offer).json()["call"]
+        self.assertFalse(session["accepted"])
+        self.assertEqual(self.call(self.b, self.alex, "start", **offer).status_code, 409)
+        self.assertEqual(self.call(self.c, self.alex, "status").status_code, 404)
+        incoming = self.call(self.b, self.alex, "status").json()["call"]
+        self.assertEqual(incoming["offer"], offer["sdp"])
+        answer = {"id": session["id"], "sdp": "v=0\r\n"}
+        self.assertEqual(self.call(self.a, self.jamie, "answer", **answer).status_code, 400)
+        self.assertTrue(self.call(self.b, self.alex, "answer", **answer).json()["call"]["accepted"])
+        self.assertEqual(self.call(self.a, self.jamie, "status").json()["call"]["answer"], answer["sdp"])
+        self.react(self.b, self.alex, "block")
+        self.assertEqual(self.call(self.a, self.jamie, "status").status_code, 404)
+        from .models import Call
+        self.assertFalse(Call.objects.exists())
+
+    def test_call_decline_and_hosted_relay_requirement(self):
+        self.match()
+        result = self.call(self.a, self.jamie, "start", mode="voice", sdp="v=0\r\n")
+        session = result.json()["call"]
+        self.assertIsNone(self.call(self.b, self.alex, "end", id=session["id"]).json()["call"])
+        from .calls import enabled, valid_sdp
+        with override_settings(MEET_LOCAL=False, MEET_TURN_URL="", MEET_TURN_SECRET=""):
+            self.assertFalse(enabled())
+            self.assertFalse(valid_sdp("v=0\r\na=candidate:1 1 udp 100 10.0.0.1 1234 typ host\r\n"))

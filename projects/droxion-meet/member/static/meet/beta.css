@@ -16,3 +16,5 @@
 .skip-link { position: absolute; top: -60px; left: 12px; background: white; padding: 10px; z-index: 99; }
 .skip-link:focus { top: 4px; }
 :focus-visible { outline: 3px solid #6b37b8; outline-offset: 3px; }
+#calling video { width: 100%; max-width: 400px; background: #21152d; border-radius: 12px; }
+#calling [hidden] { display: none; }

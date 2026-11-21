@@ -5,7 +5,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.urls import path
 
-from . import views
+from . import calls, views
 
 
 def demo(request, asset="index.html"):
@@ -39,6 +39,7 @@ urlpatterns = [
     path("members/<int:peer>/report/", views.report, name="report"),
     path("members/<int:peer>/chat/", views.thread, name="thread"),
     path("members/<int:peer>/inbox/", views.inbox, name="inbox"),
+    path("members/<int:peer>/call/", calls.signal, name="call_signal"),
     path("members/<int:peer>/send/", views.send, name="send"),
     path("members/<int:peer>/plan/", views.propose, name="propose"),
     path("members/<int:peer>/plan/<int:plan_id>/<str:action>/", views.plan_status, name="plan_status"),

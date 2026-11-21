@@ -65,3 +65,9 @@ Use `projects/droxion-meet/render.qa.yaml` from the QA branch. The template uses
 ### Launch checklist
 
 Public account creation, email verification and password resets, provider-backed age assurance, location and age filters, moderated private uploads, and billing are future work. The QA community is a manually chosen filter, not a distance measurement. Add a moderation staffing and escalation plan, documented retention and deletion rules, stronger administrator access controls, login throttling, stronger media controls and review, and production monitoring before onboarding real dating users. Validate concurrency, persistence, privacy, accessibility, and recovery in the production database and hosting environment. Obtain legal review of the drafts in `POLICY-DRAFTS.md` and separate payment-provider approval before enabling billing.
+
+### Voice and video calls
+
+A mutual match can place a voice or video call from its conversation. The recipient must accept before media connects. Closing the conversation ends the call. Blocking or unmatching removes call signaling and disconnects the client on its next status refresh. Calls are not recorded. Signaling is temporary and limited to the matching pair.
+
+Local QA allows direct WebRTC for two browsers on the same machine or network. Hosted calling requires `MEET_TURN_URL` (a TURN or TURNS URL) and `MEET_TURN_SECRET` (a shared secret for TURN REST credentials). Configure both in the private Render service environment using a dedicated TURN deployment. Hosted browsers use relay-only ICE. Leave both variables unset until a relay is available. Verify with two provisioned QA accounts on separate networks and confirm permissions, accept, decline, hang-up, and block behavior before inviting testers.

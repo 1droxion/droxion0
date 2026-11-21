@@ -8,6 +8,22 @@
     <form method="post" action="{% url 'react' peer.user_id 'unmatch' %}">{% csrf_token %}<button class="btn">Unmatch</button></form>
     <form method="post" action="{% url 'react' peer.user_id 'block' %}">{% csrf_token %}<button class="btn danger">Block</button></form>
   </div>
+  {% if calling_enabled %}
+  <section id="calling" data-url="{% url 'call_signal' peer.user_id %}">
+    <div class="beta-actions">
+      <button class="btn" type="button" data-call="voice">Voice call</button>
+      <button class="btn" type="button" data-call="video">Video call</button>
+      <button class="btn primary" type="button" data-call="accept" hidden>Accept</button>
+      <button class="btn danger" type="button" data-call="end" hidden>End call</button>
+    </div>
+    <p role="status" id="call-status"></p>
+    <video id="call-remote" autoplay playsinline hidden></video>
+    <video id="call-local" autoplay playsinline muted hidden></video>
+  </section>
+  <script src="{% static 'meet/call.js' %}" defer></script>
+  {% else %}
+  <p>Voice and video calling are unavailable in this beta until a media relay is configured.</p>
+  {% endif %}
   <h2>Messages</h2>
   <p id="inbox-status" role="status"></p>
   <div id="inbox" class="thread" aria-label="Conversation" data-url="{% url 'inbox' peer.user_id %}"></div>

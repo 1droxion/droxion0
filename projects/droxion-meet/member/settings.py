@@ -64,3 +64,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 32_768
 BETA_PASSWORD = "" if DEBUG else os.environ["MEET_BETA_PASSWORD"]
 if not DEBUG and len(BETA_PASSWORD) < 32:
     raise ValueError("Set MEET_BETA_PASSWORD to a random secret of at least 32 characters")
+
+# Hosted calls require a relay to avoid sharing member IP addresses.
+MEET_TURN_URL = os.getenv("MEET_TURN_URL", "")
+MEET_TURN_SECRET = os.getenv("MEET_TURN_SECRET", "")

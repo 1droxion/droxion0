@@ -108,3 +108,12 @@ class Report(models.Model):
     evidence = models.CharField(max_length=500, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     resolved = models.BooleanField(default=False)
+
+
+class Call(models.Model):
+    connection = models.OneToOneField(Connection, on_delete=models.CASCADE)
+    caller = models.ForeignKey(User, on_delete=models.CASCADE)
+    mode = models.CharField(max_length=5, choices=[("voice", "Voice"), ("video", "Video")])
+    offer = models.TextField()
+    answer = models.TextField(blank=True)
+    updated = models.DateTimeField(auto_now=True)
