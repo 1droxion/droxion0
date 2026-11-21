@@ -139,7 +139,7 @@ updateCaptions();
 file.addEventListener("change",()=>{
   fileName.textContent=file.files[0]?.name||"No video selected";
   if(!file.files.length||submit.disabled)return;
-  if(!youtube(url.value.trim()))url.value="";
+  url.value=""; // An uploaded recording becomes the sole video source.
   if(retryUpload){
     retryUpload=false;
     form.requestSubmit();
@@ -149,8 +149,8 @@ url.addEventListener("input",()=>{
   retryUpload=false;
   if(url.value.trim()&&!youtube(url.value.trim())){file.value="";fileName.textContent="No video selected";}
   $("sourceHelp").textContent=youtube(url.value.trim())
-    ?"YouTube link detected. If the import is blocked, upload your original recording."
-    :"Paste a YouTube or direct video file link, or upload a recording.";
+    ?"YouTube import may be blocked. Upload an original MP4 for the most reliable results."
+    :"Recommended: upload your own MP4, or paste a direct HTTPS video-file URL.";
 });
 selectAll.addEventListener("click",()=>{
   for(const box of cards.querySelectorAll('input[type="checkbox"]'))box.checked=true;
