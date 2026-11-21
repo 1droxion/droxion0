@@ -1,4 +1,3 @@
-@import url('');
 :root{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#25243b;background:#f8f7fc;font-synthesis:none}
 *{box-sizing:border-box}body{margin:0;min-width:320px}button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #8b83ff;outline-offset:3px}
 :root{--purple:#6658e9;--deep:#24213b;--muted:#75748a;--pink:#ef6586;--stroke:#e7e4f1;--white:#fff}
