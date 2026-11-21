@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel beta-panel">
+  <h1>Settings</h1>
+  {% if user.profile %}<a class="btn" href="{% url 'edit_profile' %}">Profile and visibility</a>{% endif %}
+  {% if user.is_staff %}<p><a href="/admin/">Moderation dashboard</a></p>{% endif %}
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn">Sign out</button></form>
+  {% if not user.is_staff %}
+  <h2>Delete QA account</h2>
+  <p>This permanently deletes your QA profile and related conversations and plans.</p>
+  <form method="post" action="{% url 'delete_account' %}">
+    {% csrf_token %}
+    <label for="confirm-password">Confirm your password</label>
+    <input id="confirm-password" name="password" type="password" autocomplete="current-password" required>
+    <button class="btn danger">Permanently delete account</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

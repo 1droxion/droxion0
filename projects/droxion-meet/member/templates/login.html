@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel beta-panel">
+  <h1>QA sign in</h1>
+  <p>Use the internal test account supplied by the QA administrator.</p>
+  <form method="post">
+    {% csrf_token %}{{ form.as_p }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn primary">Sign in</button>
+  </form>
+</section>
+{% endblock %}

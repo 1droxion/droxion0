@@ -1,0 +1,32 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Droxion Meet{% endblock %}</title>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="{% static 'meet/beta.css' %}">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<div class="banner">Private QA beta · Synthetic test data only</div>
+<header class="topbar">
+  <div class="shell beta-bar">
+    <a class="brand" href="{% url 'home' %}"><span class="brandmark" aria-hidden="true">♥</span>Droxion Meet</a>
+    <nav aria-label="Main navigation">
+      <a href="{% url 'demo' %}">Demo bots</a>
+      {% if user.is_authenticated %}
+        <a href="{% url 'discover' %}">Discover</a>
+        <a href="{% url 'matches' %}">Chats &amp; plans</a>
+        <a href="{% url 'preferences' %}">Settings</a>
+      {% else %}
+        <a href="{% url 'login' %}">QA sign in</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main class="shell beta-main" id="content">{% block content %}{% endblock %}</main>
+</body>
+</html>
