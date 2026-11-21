@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0b090e">
-  <meta name="description" content="Create five vertical highlight clips from your gameplay with custom styles and captions.">
+  <meta name="description" content="Make 1–5 vertical MP4 clips from your own gaming videos with styles and optional manual captions. Limited trial, no payment required.">
   <title>DroxionClips — Turn Gameplay into Short Clips</title>
   <link rel="canonical" href="https://droxion.com/">
   <meta property="og:title" content="DroxionClips — Gaming Highlights">
@@ -41,8 +41,8 @@
       <div class="shell hero-inner">
         <div class="hero-copy">
           <p class="eyebrow">Turn your gameplay into</p>
-          <h1 id="headline">Viral Reels<br>&amp; <em>Real Income</em></h1>
-          <p class="intro">Create high-impact gaming clips for Shorts, TikTok, Instagram and Facebook Reels. Grow your audience and explore ways to earn.</p>
+          <h1 id="headline">Your Gameplay.<br><em>Ready-to-Post Clips.</em></h1>
+          <p class="intro">Turn footage you own into 1–5 downloadable vertical clips for Shorts, TikTok and Reels. Choose a style, review the results, and post what you like.</p>
           <ul class="benefits">
             <li><svg><use href="#bolt"/></svg>Get<br>Highlights</li>
             <li><svg><use href="#film"/></svg>Add<br>Captions</li>
@@ -63,11 +63,11 @@
   <div class="public-beta-card paste-editor">
     <div class="beta-brow">DroxionClips · Create your clips</div>
     <h2 id="editor-title">Auto-edit your video. Or create clips.</h2>
-    <p>Paste an authorized video link or upload your recording. Auto Edit joins strong moments into one finished reel. Clips creates 1–5 separate highlights.</p>
+    <p>Upload your own MP4 recording for the most reliable results, or paste a direct video-file link. Auto Edit makes one montage; Clips creates 1–5 separate highlights. YouTube imports can be blocked.</p>
     <form id="clipForm" class="clip-form">
       <label class="editor-label" for="sourceUrl">Video link</label>
       <div class="paste-row">
-        <input id="sourceUrl" type="url" inputmode="url" placeholder="Paste a YouTube or direct video file link" autocomplete="off">
+        <input id="sourceUrl" type="url" inputmode="url" placeholder="Direct MP4 link (YouTube may be blocked)" autocomplete="off">
         <button type="submit" id="startClipping" class="cta">Start →</button>
       </div>
       <div class="source-options">
@@ -75,7 +75,7 @@
         <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/x-m4v,video/x-matroska,video/webm">
         <span id="fileName">No video selected</span>
       </div>
-      <p id="sourceHelp" class="source-help">Paste a YouTube watch link, a direct video file link, or upload a recording.</p>
+      <p id="sourceHelp" class="source-help">Recommended: upload an MP4 you own. YouTube watch links may fail to import on cloud servers.</p>
       <div class="clip-options">
         <label>Editing mode
           <select id="editMode"><option value="auto" selected>Auto Edit — one finished video</option><option value="clips">Clips — separate highlights</option></select>
@@ -101,7 +101,7 @@
         </label>
       </div>
       <label class="rights-row"><input id="rightsCheck" type="checkbox" required> I own or have permission to edit this recording.</label>
-      <p class="small-note">Free limited trial · 1 GiB maximum · Up to 3 hours per recording · No login required · One render at a time · Clips expire automatically</p>
+      <p class="small-note">Free limited beta · No payments collected · Maximum 1 GiB / 3 hours · One render at a time · Files expire automatically · Longer videos may take longer or fail on limited hosting</p>
     </form>
     <div id="editorStatus" class="editor-status" role="status" aria-live="polite" hidden>
       <p id="statusText">Preparing your clips…</p><progress id="clipProgress" max="100" value="0"></progress>
@@ -125,7 +125,7 @@
         <span><i class="youtube" aria-hidden="true"></i>YouTube</span>
         <span class="perks"><b>5</b>Highlight exports</span>
         <span class="perks"><b>Aa</b>Caption controls</span>
-        <span class="perks"><b>⌂</b>Local processing</span>
+        <span class="perks"><b>↓</b>MP4 downloads</span>
       </section>
       <section id="examples" class="examples" aria-label="Creator use cases">
         <div class="scrollrow" tabindex="0">
@@ -138,12 +138,12 @@
       </section>
       <section id="how" class="info">
         <h2>How It Works</h2>
-        <ol><li>Upload gameplay you own or have permission to use.</li><li>Choose a style and optional manual captions.</li><li>Review and download five vertical MP4s selected using audio and motion.</li></ol>
+        <ol><li>Upload an MP4 you own or use a direct file link.</li><li>Choose Auto Edit or 1–5 clips, a style, and optional manual captions.</li><li>Preview and download MP4s selected using audio and motion.</li></ol>
         <p>Clip selection uses activity in the footage. Audience growth and earnings vary by creator and platform.</p>
       </section>
       <section id="pricing" class="info pricing">
-        <div><h2>DroxionClips Pro</h2><p>Try five 9:16 exports, original styles and manual captions in the limited online beta.</p></div>
-        <div><strong>$9.99<small>/month</small></strong><p>Future plan · no payment accepted</p></div>
+        <div><h2>Planned 5-Clip Package</h2><p>We are testing 1–5 vertical exports, clip styles and optional manual captions. Payment is not enabled.</p></div>
+        <div><strong>$9.99<small>/5-clip package</small></strong><p>Proposed price only · no payment accepted</p></div>
       </section>
     </div>
   </main>
