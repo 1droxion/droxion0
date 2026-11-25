@@ -83,7 +83,7 @@ function createApp(db, config={}) {
   }
   app.get('/',async(req,res)=>{
     const {products,settings}=await getCatalog()
-    send(res,200,'Closer. Naturally.',home(products.filter(p=>p.enabled),settings,signupOpen),{settings})
+    send(res,200,defaults.headline,home(products.filter(p=>p.enabled),settings,signupOpen),{settings})
   })
   for(const route of ['/shop','/search']) {
     app.get(route,async(req,res)=>{

@@ -40,7 +40,7 @@ async function main() {
           if (request.failure()?.errorText!=='net::ERR_ABORTED') errors.push(request.url())
         })
         await page.goto(base)
-        await page.getByRole('heading',{name:'Closer. Naturally.'}).waitFor()
+        await page.getByRole('heading',{name:'Make tonight feel closer.'}).waitFor()
         assert.equal(await page.locator('.heroimage img').evaluate(img=>img.complete&&img.naturalWidth>0),true)
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
         if(screenshotDir&&['desktop','iphone'].includes(name)) await page.screenshot({path:screenshotDir+'/'+name+'.png',fullPage:true})

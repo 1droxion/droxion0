@@ -30,7 +30,7 @@ test('serves catalog, all product routes, policy pages, assets and honest API he
   const home=await request('/')
   assert.equal(home.status,200)
   assert.match(home.headers.get('content-security-policy'),/frame-ancestors 'none'/)
-  assert.match(await home.text(),/Naturally[.]/)
+  assert.match(await home.text(),/Make tonight feel closer[.]/)
   for(const route of ['/shop','/about','/faq','/contact','/privacy','/terms','/shipping','/returns','/search?q=silicone','/robots.txt','/sitemap.xml']) assert.equal((await request(route)).status,200,route)
   for(const slug of ['water-based-8oz','water-based-16oz','silicone-based-8oz']) {
     const response=await request('/products/'+slug)

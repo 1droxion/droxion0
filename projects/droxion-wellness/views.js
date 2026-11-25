@@ -2,7 +2,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp
 const money = cents => new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(cents / 100)
 const defaults = {
   announcement:'Discover a new standard of intimate wellness.',
-  headline:'Closer. Naturally.',
+  headline:'Make tonight feel closer.',
   featured:'water-based-16oz',
   story:'DROXION Wellness is an emerging intimate care brand built around simplicity, comfort and confidence. Our mission is to make premium personal wellness accessible.',
   contact:'', instagram:'', facebook:'', mode:'coming-soon'
@@ -40,10 +40,18 @@ const faq = (pairs) => pairs.map(([q,a])=>`<details class="faq"><summary>${esc(q
 const commonFAQ = [['When can I order?','The first collection is in development. Orders and preorders are closed.'],['Are the bottles pictured final?','The images depict packaging concepts. Final packaging and pricing may change.'],['What about ingredients, usage and compatibility?', pending],['How do I get launch updates?','Join the launch list and select any products you’re interested in.']]
 function home(products, settings, signupOpen) {
   const p = products.find(p => p.slug === settings.featured) || products[0]
-  return `<section class="wrap hero"><div class="herocopy"><p class="kicker">INTIMATE CARE. PREMIUM FEEL.</p><h1>${esc(settings.headline).replace(' Naturally.', ' <em>Naturally.</em>')}</h1><p>A new approach to intimate wellness, designed around comfort, simplicity and connection.</p><div class="actions"><a class="button" href="#collection">Explore Collection</a><a class="button secondary" href="#launch">Join the Launch List</a></div></div>${p ? `<figure class="heroimage">${photo(p,true)}<figcaption>Packaging concept</figcaption></figure>` : ''}</section>
+  const flagship = p?.slug === 'water-based-16oz' && !p.customImage && p.image === 'water16'
+  const headline = settings.headline === 'Closer. Naturally.' ? defaults.headline : settings.headline
+  const pitch = flagship
+    ? `<p class="hero-product">${esc(p.name)} · 16 fl oz</p><p class="hero-note">Adds glide during intimacy.</p>`
+    : '<p class="hero-note">Explore our first intimate care collection.</p>'
+  const heroPhoto = flagship
+    ? '<img src="/images/water16-crimson-480.webp" srcset="/images/water16-crimson-480.webp 480w, /images/water16-crimson-900.webp 900w" sizes="(max-width: 720px) 92vw, 46vw" width="480" height="600" fetchpriority="high" alt="DROXION 16 fl oz water-based personal lubricant packaging concept under red lighting">'
+    : photo(p,true)
+  return `<section class="hero-band"><div class="wrap hero"><div class="herocopy"><h1>${esc(headline)}</h1>${pitch}<div class="actions"><a class="button" href="#launch"${flagship?' data-notify="water-based-16oz"':''}>Notify Me at Launch</a><a class="button secondary" href="#collection">Explore the Collection</a></div></div>${p ? `<figure class="heroimage ${flagship?'hero-crimson':'hero-standard'}">${heroPhoto}<figcaption>Packaging concept</figcaption></figure>` : ''}</div></section>
   <section class="wrap section" id="collection"><div class="sectionhead"><div><p class="kicker">THE FIRST COLLECTION</p><h2>Care, made personal.</h2></div><p>Our first three products are in development. Packaging and pricing are preliminary.</p></div><div class="grid">${products.map(card).join('')}</div></section>
   <section class="story"><div class="wrap storyinner"><h2>Intimate wellness,<br><em>reimagined.</em></h2><p>${esc(settings.story)}</p></div></section>
-  <section class="wrap section launch" id="launch"><div><h2>Be First to Experience DROXION.</h2><p>Get an email when our first collection is ready.</p></div>${signupOpen ? signup(products) : '<p>Launch signups will open when the service is ready.</p>'}</section>`
+  <section class="wrap section launch" id="launch"><div><h2>Be First to Experience DROXION.</h2><p>Get an email when our first collection is ready.</p></div>${signupOpen ? signup(products,flagship?p.slug:undefined) : '<p>Launch signups will open when the service is ready.</p>'}</section>`
 }
 function productPage(p, products, signupOpen) {
   return `<section class="wrap section"><a class="back" href="/shop">← Collection</a>

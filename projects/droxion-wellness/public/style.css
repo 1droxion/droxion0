@@ -10,3 +10,24 @@ footer{background:#fafafa;border-top:1px solid var(--line);padding:2.2rem 0 1.1r
 @media(max-width:720px){nav{min-height:62px;justify-content:initial;gap:1rem}nav .brand{margin-right:auto}.navlinks{display:none}.mobile{display:block}.mobile div{position:absolute;right:4%;top:100%;background:#fff;padding:.6rem 1.25rem;border:1px solid var(--line);display:grid}.mobile a{padding:.5rem}.hero,.storyinner,.launch,.detailgrid{grid-template-columns:1fr;gap:1.35rem}.hero{padding-block:1.6rem}.heroimage{height:min(106vw,450px)}.hero h1 em{display:inline}.sectionhead,.foot{display:block}.sectionhead p,.foot div:nth-child(2){margin-top:.85rem}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:1.25rem .75rem}.cardlinks{gap:.35rem}.cardlinks a{padding:.35rem .45rem}.detailimage{max-height:520px}}
 @media(max-width:370px){.grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+.hero-band{background:#0b0809;color:#fff}
+.hero-band .hero{gap:2%;padding-block:0}
+.hero-band .herocopy{padding-block:2.5rem}
+.hero-band h1{font-size:clamp(3.2rem,6.1vw,6rem);max-width:9ch;margin:0 0 1.1rem}
+.hero-band .herocopy .hero-product{color:#fff;font-size:1.05rem;font-weight:600}
+.hero-band .herocopy .hero-note{color:#f0e4e6;font-size:.95rem;margin-top:.35rem}
+.hero-band .button{background:#b90020;border-color:#b90020;font-weight:650}
+.hero-band .button:hover{background:#d40025}
+.hero-band .secondary{background:transparent;border-color:#bab2b3;color:#fff}
+.hero-band .secondary:hover{background:#302428}
+.hero-band :focus-visible{outline-color:#fff}
+.hero-band .hero-crimson{background:#0b0809}
+.hero-band .hero-crimson img{mix-blend-mode:normal;object-fit:contain}
+.hero-band figcaption{background:#0b0809;color:#fff}
+@media(max-width:720px){
+ .hero-band .hero{gap:0}
+ .hero-band .herocopy{padding:1.8rem 0 1rem}
+ .hero-band h1{font-size:clamp(2.65rem,10vw,4rem);max-width:15ch;margin-bottom:.75rem}
+ .hero-band .actions{margin-top:1rem}
+ .hero-band .heroimage{height:min(86vw,410px)}
+}
